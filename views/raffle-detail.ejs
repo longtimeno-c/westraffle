@@ -183,7 +183,7 @@
     const STRIPE_PUBLIC_KEY = '<%- process.env.STRIPE_PUBLIC_KEY %>';
     const ENABLE_PAYMENTS = '<%- process.env.ENABLE_PAYMENTS %>';
 </script>
-<script src="https://js.stripe.com/v3/"></script>
+<!-- Remove duplicate Stripe script since it's loaded in layout.ejs -->
 <script src="/js/stripe-handler.js"></script>
 
 <!-- Only show payment modal if payments are enabled -->

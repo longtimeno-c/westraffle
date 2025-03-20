@@ -141,6 +141,48 @@ const calculateImpactMetrics = (raffles) => {
     };
 };
 
+// Add this middleware to make environment variables available to all views
+app.use((req, res, next) => {
+    // Only set Stripe variables if they haven't been set yet
+    if (!res.locals.STRIPE_PUBLIC_KEY) {
+        // Validate required environment variables
+        if (!process.env.STRIPE_PUBLIC_KEY) {
+            console.error('STRIPE_PUBLIC_KEY is not set in environment variables');
+        }
+        if (!process.env.STRIPE_SECRET_KEY) {
+            console.error('STRIPE_SECRET_KEY is not set in environment variables');
+        }
+        if (!process.env.STRIPE_WEBHOOK_SECRET) {
+            console.error('STRIPE_WEBHOOK_SECRET is not set in environment variables');
+        }
+
+        res.locals.STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY;
+        res.locals.ENABLE_PAYMENTS = process.env.ENABLE_PAYMENTS;
+        
+        // Only log for payment-related routes
+        if (req.path.includes('/payment') || req.path.includes('/bid') || req.path.includes('/purchase')) {
+            console.log('Setting up Stripe environment variables:', {
+                hasPublicKey: !!process.env.STRIPE_PUBLIC_KEY,
+                hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+                hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+                enablePayments: process.env.ENABLE_PAYMENTS,
+                path: req.path,
+                protocol: req.protocol,
+                host: req.get('host')
+            });
+        }
+    }
+    next();
+});
+
+// Add HTTPS redirect middleware
+app.use((req, res, next) => {
+    if (process.env.ENABLE_PAYMENTS === 'true' && !req.secure && req.get('x-forwarded-proto') !== 'https' && process.env.NODE_ENV !== 'development') {
+        return res.redirect('https://' + req.get('host') + req.url);
+    }
+    next();
+});
+
 // Routes
 app.get('/', (req, res) => {
     const raffles = readRaffles();
@@ -264,6 +306,9 @@ app.post('/raffles/:id/purchase', async (req, res) => {
             receipt_email: req.body.email,
             shipping: {
                 name: req.body.name
+            },
+            automatic_payment_methods: {
+                enabled: true,
             }
         });
 
@@ -274,7 +319,8 @@ app.post('/raffles/:id/purchase', async (req, res) => {
             amount: amount,
             quantity: quantity,
             raffle: raffle,
-            publicKey: process.env.STRIPE_PUBLISHABLE_KEY
+            STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
+            ENABLE_PAYMENTS: process.env.ENABLE_PAYMENTS
         });
     } catch (error) {
         console.error('Error creating payment intent:', error);
@@ -297,6 +343,9 @@ app.post('/create-payment-intent', async (req, res) => {
                 raffleId,
                 quantity,
                 type: 'ticket_purchase'
+            },
+            automatic_payment_methods: {
+                enabled: true,
             }
         });
 
@@ -331,12 +380,26 @@ app.post('/create-bid-payment-intent', async (req, res) => {
 // Webhook handler for Stripe events
 app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
     const sig = req.headers['stripe-signature'];
+    console.log('Received Stripe webhook:', {
+        signature: sig ? 'Present' : 'Missing',
+        eventType: req.body.type
+    });
+
     let event;
 
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('Webhook event constructed successfully:', {
+            type: event.type,
+            id: event.id,
+            created: event.created
+        });
     } catch (err) {
-        console.error('Webhook Error:', err.message);
+        console.error('Webhook Error:', {
+            message: err.message,
+            type: err.type,
+            stack: err.stack
+        });
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -344,20 +407,37 @@ app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res
     if (event.type === 'payment_intent.succeeded') {
         const paymentIntent = event.data.object;
         const metadata = paymentIntent.metadata;
+        console.log('Processing successful payment:', {
+            paymentIntentId: paymentIntent.id,
+            amount: paymentIntent.amount,
+            metadata: metadata
+        });
 
         const raffles = readRaffles();
         const raffleIndex = raffles.findIndex(r => r.id === metadata.raffleId);
         
         if (raffleIndex === -1) {
-            console.error('Raffle not found:', metadata.raffleId);
+            console.error('Raffle not found for payment:', {
+                raffleId: metadata.raffleId,
+                paymentIntentId: paymentIntent.id
+            });
             return res.status(400).send('Raffle not found');
         }
 
         const raffle = raffles[raffleIndex];
+        console.log('Found raffle for payment:', {
+            raffleId: raffle.id,
+            type: raffle.raffleType,
+            currentBid: raffle.currentBid
+        });
 
         if (metadata.type === 'ticket_purchase') {
             // Add purchased tickets
             const quantity = parseInt(metadata.quantity);
+            console.log('Processing ticket purchase:', {
+                quantity,
+                paymentIntentId: paymentIntent.id
+            });
             for (let i = 0; i < quantity; i++) {
                 raffle.tickets.push({
                     id: Date.now().toString() + i,
@@ -370,7 +450,11 @@ app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res
             raffle.soldTickets += quantity;
         } else if (metadata.type === 'auction_bid') {
             // Add new bid
-            const bidAmount = paymentIntent.amount / 100; // Convert from cents
+            const bidAmount = paymentIntent.amount / 100;
+            console.log('Processing auction bid:', {
+                bidAmount,
+                paymentIntentId: paymentIntent.id
+            });
             raffle.bids.push({
                 amount: bidAmount,
                 name: paymentIntent.shipping?.name || 'Anonymous',
@@ -382,18 +466,20 @@ app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res
         }
 
         writeRaffles(raffles);
+        console.log('Successfully processed payment and updated raffle');
     }
 
     res.json({received: true});
 });
 
-// Add new route for placing bids
+// Update the payment page render in the bid route
 app.post('/raffles/:id/bid', async (req, res) => {
     try {
         const raffles = readRaffles();
         const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
         
         if (raffleIndex === -1) {
+            console.error('Raffle not found:', req.params.id);
             return res.status(404).render('error', {
                 title: 'Raffle Not Found',
                 message: 'The requested raffle could not be found.'
@@ -403,6 +489,7 @@ app.post('/raffles/:id/bid', async (req, res) => {
         const raffle = raffles[raffleIndex];
         
         if (raffle.raffleType !== 'auction') {
+            console.error('Invalid raffle type for bid:', raffle.raffleType);
             return res.status(400).render('error', {
                 title: 'Invalid Operation',
                 message: 'This raffle does not accept bids.'
@@ -413,6 +500,12 @@ app.post('/raffles/:id/bid', async (req, res) => {
         const minimumBid = raffle.currentBid + raffle.minimumBidIncrement;
         
         if (bidAmount < minimumBid) {
+            console.error('Invalid bid amount:', {
+                bidAmount,
+                minimumBid,
+                currentBid: raffle.currentBid,
+                increment: raffle.minimumBidIncrement
+            });
             return res.status(400).render('error', {
                 title: 'Invalid Bid',
                 message: `Bid must be at least $${minimumBid}`
@@ -430,7 +523,15 @@ app.post('/raffles/:id/bid', async (req, res) => {
             receipt_email: req.body.email,
             automatic_payment_methods: {
                 enabled: true,
+                allow_redirects: 'never'
             }
+        });
+
+        console.log('Payment intent created:', {
+            id: paymentIntent.id,
+            amount: paymentIntent.amount,
+            status: paymentIntent.status,
+            clientSecret: paymentIntent.client_secret ? 'Present' : 'Missing'
         });
 
         // Render payment page with client secret
@@ -439,11 +540,19 @@ app.post('/raffles/:id/bid', async (req, res) => {
             clientSecret: paymentIntent.client_secret,
             amount: bidAmount,
             raffle: raffle,
-            publicKey: process.env.STRIPE_PUBLISHABLE_KEY,
-            isBid: true
+            isBid: true,
+            name: req.body.name || '',
+            email: req.body.email || '',
+            STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
+            ENABLE_PAYMENTS: process.env.ENABLE_PAYMENTS
         });
     } catch (error) {
-        console.error('Error processing bid:', error);
+        console.error('Error processing bid:', {
+            message: error.message,
+            type: error.type,
+            code: error.code,
+            stack: error.stack
+        });
         res.status(500).render('error', {
             title: 'Bid Error',
             message: 'There was an error processing your bid. Please try again.'
