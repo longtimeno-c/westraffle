@@ -152,9 +152,6 @@ app.use((req, res, next) => {
         if (!process.env.STRIPE_SECRET_KEY) {
             console.error('STRIPE_SECRET_KEY is not set in environment variables');
         }
-        if (!process.env.STRIPE_WEBHOOK_SECRET) {
-            console.error('STRIPE_WEBHOOK_SECRET is not set in environment variables');
-        }
 
         res.locals.STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY;
         res.locals.ENABLE_PAYMENTS = process.env.ENABLE_PAYMENTS;
@@ -164,7 +161,6 @@ app.use((req, res, next) => {
             console.log('Setting up Stripe environment variables:', {
                 hasPublicKey: !!process.env.STRIPE_PUBLIC_KEY,
                 hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
-                hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
                 enablePayments: process.env.ENABLE_PAYMENTS,
                 path: req.path,
                 protocol: req.protocol,
@@ -375,101 +371,6 @@ app.post('/create-bid-payment-intent', async (req, res) => {
         console.error('Error creating bid payment intent:', error);
         res.status(500).json({ error: error.message });
     }
-});
-
-// Webhook handler for Stripe events
-app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    console.log('Received Stripe webhook:', {
-        signature: sig ? 'Present' : 'Missing',
-        eventType: req.body.type
-    });
-
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-        console.log('Webhook event constructed successfully:', {
-            type: event.type,
-            id: event.id,
-            created: event.created
-        });
-    } catch (err) {
-        console.error('Webhook Error:', {
-            message: err.message,
-            type: err.type,
-            stack: err.stack
-        });
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    // Handle successful payments
-    if (event.type === 'payment_intent.succeeded') {
-        const paymentIntent = event.data.object;
-        const metadata = paymentIntent.metadata;
-        console.log('Processing successful payment:', {
-            paymentIntentId: paymentIntent.id,
-            amount: paymentIntent.amount,
-            metadata: metadata
-        });
-
-        const raffles = readRaffles();
-        const raffleIndex = raffles.findIndex(r => r.id === metadata.raffleId);
-        
-        if (raffleIndex === -1) {
-            console.error('Raffle not found for payment:', {
-                raffleId: metadata.raffleId,
-                paymentIntentId: paymentIntent.id
-            });
-            return res.status(400).send('Raffle not found');
-        }
-
-        const raffle = raffles[raffleIndex];
-        console.log('Found raffle for payment:', {
-            raffleId: raffle.id,
-            type: raffle.raffleType,
-            currentBid: raffle.currentBid
-        });
-
-        if (metadata.type === 'ticket_purchase') {
-            // Add purchased tickets
-            const quantity = parseInt(metadata.quantity);
-            console.log('Processing ticket purchase:', {
-                quantity,
-                paymentIntentId: paymentIntent.id
-            });
-            for (let i = 0; i < quantity; i++) {
-                raffle.tickets.push({
-                    id: Date.now().toString() + i,
-                    name: paymentIntent.shipping?.name || 'Anonymous',
-                    email: paymentIntent.receipt_email || 'anonymous@example.com',
-                    purchaseDate: new Date().toISOString(),
-                    paymentIntentId: paymentIntent.id
-                });
-            }
-            raffle.soldTickets += quantity;
-        } else if (metadata.type === 'auction_bid') {
-            // Add new bid
-            const bidAmount = paymentIntent.amount / 100;
-            console.log('Processing auction bid:', {
-                bidAmount,
-                paymentIntentId: paymentIntent.id
-            });
-            raffle.bids.push({
-                amount: bidAmount,
-                name: paymentIntent.shipping?.name || 'Anonymous',
-                email: paymentIntent.receipt_email || 'anonymous@example.com',
-                timestamp: new Date().toISOString(),
-                paymentIntentId: paymentIntent.id
-            });
-            raffle.currentBid = bidAmount;
-        }
-
-        writeRaffles(raffles);
-        console.log('Successfully processed payment and updated raffle');
-    }
-
-    res.json({received: true});
 });
 
 // Update the payment page render in the bid route
