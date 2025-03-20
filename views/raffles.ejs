@@ -1,0 +1,75 @@
+<div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-12">
+        <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-raffle-primary to-raffle-secondary">Active Raffles</h1>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 px-4">
+        <% if (raffles && raffles.length > 0) { %>
+            <% raffles.forEach(raffle => { %>
+                <div class="card-gradient rounded-xl shadow-xl overflow-hidden hover-scale transition-all duration-300 h-full flex flex-col">
+                    <div class="h-80 overflow-hidden">
+                        <% if (raffle.imageUrl) { %>
+                            <img src="<%= raffle.imageUrl %>" alt="<%= raffle.title %>" 
+                                 class="w-full h-full object-cover">
+                        <% } else { %>
+                            <div class="w-full h-full bg-gradient-to-r from-raffle-primary to-raffle-secondary flex items-center justify-center">
+                                <span class="text-white text-opacity-50 text-2xl">No Image Available</span>
+                            </div>
+                        <% } %>
+                    </div>
+                    
+                    <div class="p-8 flex-grow flex flex-col">
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800"><%= raffle.title %></h3>
+                            <span class="bg-gradient-to-r from-raffle-accent to-raffle-primary text-white px-4 py-2 rounded-full text-lg font-semibold">
+                                $<%= raffle.ticketPrice %>
+                            </span>
+                        </div>
+                        <p class="text-gray-600 mb-6 text-lg"><%= raffle.description %></p>
+                        
+                        <div class="space-y-4 mb-6">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">Total Tickets:</span>
+                                <span class="font-semibold text-gray-800"><%= raffle.totalTickets %></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">Sold Tickets:</span>
+                                <span class="font-semibold text-gray-800"><%= raffle.soldTickets || 0 %></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">End Date:</span>
+                                <span class="font-semibold text-gray-800"><%= new Date(raffle.endDate).toLocaleDateString() %></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="w-full bg-gray-100 rounded-full h-4">
+                                <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary h-4 rounded-full transition-all duration-500" 
+                                     style="width: <%= ((raffle.soldTickets || 0) / raffle.totalTickets) * 100 %>%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto">
+                            <a href="/raffles/<%= raffle.id %>" class="btn-primary w-full text-center text-lg py-3">
+                                Enter Raffle
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        <% } else { %>
+            <div class="col-span-full text-center py-16">
+                <div class="card-gradient rounded-xl p-8 max-w-2xl mx-auto">
+                    <div class="text-raffle-accent mb-4">
+                        <svg class="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No raffles available</h3>
+                    <p class="text-gray-600">Check back soon for new raffles!</p>
+                </div>
+            </div>
+        <% } %>
+    </div>
+</div> 

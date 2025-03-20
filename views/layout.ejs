@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'raffle-primary': '#4f46e5',
+                        'raffle-secondary': '#7c3aed',
+                        'raffle-accent': '#f59e0b',
+                        'raffle-light': '#818cf8',
+                    },
+                    animation: {
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #2563eb, #b8860b);
+            background-size: 400% 400%;
+            animation: gradient-x 15s ease infinite;
+        }
+        .card-gradient {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(124, 58, 237, 0.1));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .hover-scale {
+            transition: transform 0.2s ease-in-out;
+        }
+        .hover-scale:hover {
+            transform: scale(1.02);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+            margin: 15% auto;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        .nav-link {
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .nav-link:hover {
+            color: #f59e0b;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: #f59e0b;
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+        .nav-link:hover::after {
+            width: 80%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <nav class="gradient-bg shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-20">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <a href="/" class="flex items-center space-x-2 hover-scale">
+                            <span class="text-4xl font-bold text-white drop-shadow-lg">West</span>
+                            <span class="text-4xl font-bold text-raffle-accent drop-shadow-lg">Raffle</span>
+                        </a>
+                    </div>
+                    <div class="hidden sm:ml-8 sm:flex sm:space-x-4">
+                        <a href="/" class="nav-link">Home</a>
+                        <a href="/raffles" class="nav-link">Raffles</a>
+                        <a href="/charity" class="nav-link">Our Charity</a>
+                        <% if (isAdmin) { %>
+                            <a href="/create-raffle" class="nav-link">Create Raffle</a>
+                        <% } %>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <% if (username) { %>
+                        <span class="text-white mr-6 font-medium">Welcome, <%= username %></span>
+                        <button onclick="showChangeUsernameModal()" 
+                                class="text-white hover:text-raffle-accent transition-colors duration-200 font-medium">
+                            Change Username
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <%- body %>
+        </div>
+    </main>
+
+    <footer class="gradient-bg mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-white">
+                © <%= new Date().getFullYear() %> WestRaffle. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Username Modal -->
+    <div id="usernameModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Welcome to WestRaffle! 🎉</h2>
+            <p class="mb-4 text-gray-600">Please enter your username to continue:</p>
+            <form action="/set-username" method="POST">
+                <input type="text" name="username" required 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-raffle-primary focus:border-transparent transition-all duration-200"
+                       placeholder="Enter your username">
+                <div class="flex justify-end">
+                    <button type="submit" class="btn-primary">
+                        Continue
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Username Modal -->
+    <div id="changeUsernameModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Change Username</h2>
+            <p class="mb-4 text-gray-600">Enter your new username:</p>
+            <form action="/set-username" method="POST">
+                <input type="text" name="username" required 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-raffle-primary focus:border-transparent transition-all duration-200"
+                       placeholder="Enter new username">
+                <div class="flex justify-end space-x-3">
+                    <button type="button" 
+                            onclick="hideChangeUsernameModal()"
+                            class="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        Change Username
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Show initial username modal if no username is set
+        <% if (!username) { %>
+            document.getElementById('usernameModal').style.display = 'block';
+        <% } %>
+
+        // Functions to show/hide change username modal
+        function showChangeUsernameModal() {
+            document.getElementById('changeUsernameModal').style.display = 'block';
+        }
+
+        function hideChangeUsernameModal() {
+            document.getElementById('changeUsernameModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html> 

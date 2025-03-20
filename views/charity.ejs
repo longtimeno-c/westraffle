@@ -1,0 +1,68 @@
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-8">Our Charity Mission</h1>
+            
+            <div class="prose max-w-none mb-12">
+                <p class="text-gray-600 text-lg leading-relaxed">
+                    At WestRaffle, we're dedicated to supporting [Charity Name] in their mission to [brief description of charity's mission].
+                </p>
+                
+                <div class="mt-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">About [Charity Name]</h2>
+                    <p class="text-gray-600">
+                        [Detailed description of the charity, their work, and impact]
+                    </p>
+                </div>
+
+                <div class="mt-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">How Your Support Helps</h2>
+                    <ul class="list-disc list-inside text-gray-600 space-y-2">
+                        <li>Impact point 1</li>
+                        <li>Impact point 2</li>
+                        <li>Impact point 3</li>
+                    </ul>
+                </div>
+
+                <div class="mt-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Get Involved</h2>
+                    <p class="text-gray-600">
+                        Every raffle ticket purchased directly supports [Charity Name]'s mission. 
+                        You can also donate items to be raffled off, helping us raise even more funds.
+                    </p>
+                </div>
+
+                <div class="mt-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Our Impact</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="card-gradient p-6 rounded-xl text-center">
+                            <div class="text-4xl font-bold text-raffle-accent mb-2">$<%= metrics.totalRaised.toLocaleString() %></div>
+                            <div class="text-gray-600">Total Raised</div>
+                        </div>
+                        <div class="card-gradient p-6 rounded-xl text-center">
+                            <div class="text-4xl font-bold text-raffle-accent mb-2"><%= metrics.activeRaffles %></div>
+                            <div class="text-gray-600">Active Raffles</div>
+                        </div>
+                        <div class="card-gradient p-6 rounded-xl text-center">
+                            <div class="text-4xl font-bold text-raffle-accent mb-2"><%= metrics.totalSupporters %></div>
+                            <div class="text-gray-600">Supporters</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Donate Items</h2>
+                    <p class="text-gray-600">
+                        Have an item you'd like to donate for a raffle? We accept both new and gently used items in good condition.
+                        Your donation will help us raise more funds for [Charity Name].
+                    </p>
+                    <div class="mt-4">
+                        <a href="/contact" class="btn-primary inline-block">
+                            Contact Us to Donate
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 
