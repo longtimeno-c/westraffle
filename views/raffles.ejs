@@ -7,10 +7,25 @@
         <% if (raffles && raffles.length > 0) { %>
             <% raffles.forEach(raffle => { %>
                 <div class="card-gradient rounded-xl shadow-xl overflow-hidden hover-scale transition-all duration-300 h-full flex flex-col">
-                    <div class="h-80 overflow-hidden">
+                    <!-- Type Badge -->
+                    <div class="absolute top-4 right-4 z-10">
+                        <% if (raffle.raffleType === 'tickets') { %>
+                            <span class="bg-gradient-to-r from-raffle-accent to-raffle-primary text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                                Ticket Raffle
+                            </span>
+                        <% } else { %>
+                            <span class="bg-gradient-to-r from-raffle-secondary to-raffle-accent text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                                Item Auction
+                            </span>
+                        <% } %>
+                    </div>
+
+                    <!-- Image Section with Overlay -->
+                    <div class="relative h-80 overflow-hidden group">
                         <% if (raffle.imageUrl) { %>
                             <img src="<%= raffle.imageUrl %>" alt="<%= raffle.title %>" 
-                                 class="w-full h-full object-cover">
+                                 class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         <% } else { %>
                             <div class="w-full h-full bg-gradient-to-r from-raffle-primary to-raffle-secondary flex items-center justify-center">
                                 <span class="text-white text-opacity-50 text-2xl">No Image Available</span>
@@ -19,40 +34,77 @@
                     </div>
                     
                     <div class="p-8 flex-grow flex flex-col">
+                        <!-- Title and Value Row -->
                         <div class="flex justify-between items-start mb-6">
-                            <h3 class="text-2xl font-bold text-gray-800"><%= raffle.title %></h3>
-                            <span class="bg-gradient-to-r from-raffle-accent to-raffle-primary text-white px-4 py-2 rounded-full text-lg font-semibold">
-                                $<%= raffle.ticketPrice %>
-                            </span>
-                        </div>
-                        <p class="text-gray-600 mb-6 text-lg"><%= raffle.description %></p>
-                        
-                        <div class="space-y-4 mb-6">
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Total Tickets:</span>
-                                <span class="font-semibold text-gray-800"><%= raffle.totalTickets %></span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Sold Tickets:</span>
-                                <span class="font-semibold text-gray-800"><%= raffle.soldTickets || 0 %></span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">End Date:</span>
-                                <span class="font-semibold text-gray-800"><%= new Date(raffle.endDate).toLocaleDateString() %></span>
+                            <h3 class="text-2xl font-bold text-gray-800 line-clamp-2 flex-1 mr-4"><%= raffle.title %></h3>
+                            <div class="text-right">
+                                <% if (raffle.raffleType === 'tickets') { %>
+                                    <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary bg-clip-text text-transparent text-2xl font-bold">
+                                        $<%= raffle.ticketPrice %>
+                                    </div>
+                                    <div class="text-sm text-gray-500">per ticket</div>
+                                <% } else { %>
+                                    <div class="bg-gradient-to-r from-raffle-secondary to-raffle-accent bg-clip-text text-transparent text-2xl font-bold">
+                                        $<%= raffle.currentBid %>
+                                    </div>
+                                    <div class="text-sm text-gray-500">current bid</div>
+                                <% } %>
                             </div>
                         </div>
 
+                        <!-- Item Details -->
                         <div class="mb-6">
-                            <div class="w-full bg-gray-100 rounded-full h-4">
-                                <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary h-4 rounded-full transition-all duration-500" 
-                                     style="width: <%= ((raffle.soldTickets || 0) / raffle.totalTickets) * 100 %>%">
+                            <p class="text-gray-600 line-clamp-2"><%= raffle.description %></p>
+                        </div>
+
+                        <!-- Status Info -->
+                        <div class="space-y-4 mb-6">
+                            <% if (raffle.raffleType === 'tickets') { %>
+                                <!-- Ticket Progress -->
+                                <div>
+                                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                                        <span><%= raffle.soldTickets %> sold</span>
+                                        <span><%= raffle.totalTickets - raffle.soldTickets %> remaining</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-2">
+                                        <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary h-2 rounded-full transition-all duration-500" 
+                                             style="width: <%= ((raffle.soldTickets || 0) / raffle.totalTickets) * 100 %>%;">
+                                        </div>
+                                    </div>
                                 </div>
+                            <% } else { %>
+                                <!-- Auction Details -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                        <div class="text-sm text-gray-500">Current Bid</div>
+                                        <div class="font-semibold text-gray-800">$<%= raffle.currentBid %></div>
+                                    </div>
+                                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                        <div class="text-sm text-gray-500">Est. Value</div>
+                                        <div class="font-semibold text-gray-800">$<%= raffle.itemValue %></div>
+                                    </div>
+                                </div>
+                            <% } %>
+
+                            <!-- Time Remaining -->
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-500">
+                                    <i class="fas fa-clock mr-2"></i>Ends
+                                </span>
+                                <span class="font-semibold text-gray-800">
+                                    <%= new Date(raffle.endDate).toLocaleDateString() %>
+                                </span>
                             </div>
                         </div>
 
+                        <!-- Action Button -->
                         <div class="mt-auto">
-                            <a href="/raffles/<%= raffle.id %>" class="btn-primary w-full text-center text-lg py-3">
-                                Enter Raffle
+                            <a href="/raffles/<%= raffle.id %>" 
+                               class="btn-primary w-full text-center text-lg py-3 flex items-center justify-center space-x-2">
+                                <span><%= raffle.raffleType === 'tickets' ? 'Buy Tickets' : 'Place Bid' %></span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
                             </a>
                         </div>
                     </div>

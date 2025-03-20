@@ -103,23 +103,30 @@ const calculateImpactMetrics = (raffles) => {
     let activeRaffles = 0;
     let uniqueSupporters = new Set();
 
+    const now = new Date();
+
     raffles.forEach(raffle => {
         if (raffle.raffleType === 'tickets') {
-            totalRaised += raffle.soldTickets * raffle.ticketPrice;
-            raffle.tickets.forEach(ticket => {
-                uniqueSupporters.add(ticket.email);
-            });
+            totalRaised += (raffle.soldTickets || 0) * raffle.ticketPrice;
+            if (raffle.tickets) {
+                raffle.tickets.forEach(ticket => {
+                    uniqueSupporters.add(ticket.email);
+                });
+            }
         } else {
             if (raffle.currentBid > 0) {
                 totalRaised += raffle.currentBid;
             }
-            raffle.bids.forEach(bid => {
-                uniqueSupporters.add(bid.email);
-            });
+            if (raffle.bids) {
+                raffle.bids.forEach(bid => {
+                    uniqueSupporters.add(bid.email);
+                });
+            }
         }
 
+        // Properly handle date comparison
         const endDate = new Date(raffle.endDate);
-        if (endDate > new Date()) {
+        if (!isNaN(endDate.getTime()) && endDate > now) {
             activeRaffles++;
         }
     });
