@@ -121,7 +121,7 @@
                             const elements = window.stripe.elements({ 
                                 appearance,
                                 clientSecret: clientSecret,
-                                paymentMethodOrder: ['card', 'apple_pay', 'google_pay'],
+                                paymentMethodOrder: ['apple_pay', 'google_pay', 'card'],
                                 defaultValues: {
                                     billingDetails: {
                                         name: '<%= typeof name !== "undefined" ? name : "" %>',
@@ -134,9 +134,14 @@
                             console.log('Creating payment element...');
                             const paymentElement = elements.create('payment', {
                                 layout: {
-                                    type: 'tabs',
+                                    type: 'accordion',
                                     defaultCollapsed: false,
                                     radios: true,
+                                    spacedAccordionItems: true
+                                },
+                                wallets: {
+                                    applePay: 'auto',
+                                    googlePay: 'auto'
                                 }
                             });
                             console.log('Payment element created successfully');

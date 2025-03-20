@@ -49,11 +49,16 @@ async function handleBidSubmission(raffleId, bidAmount) {
         elements = stripe.elements({ appearance, clientSecret: data.clientSecret });
         const paymentElement = elements.create('payment', {
             layout: {
-                type: 'tabs',
+                type: 'accordion',
                 defaultCollapsed: false,
                 radios: true,
+                spacedAccordionItems: true
             },
-            paymentMethodOrder: ['card', 'apple_pay', 'google_pay'],
+            paymentMethodOrder: ['apple_pay', 'google_pay', 'card'],
+            wallets: {
+                applePay: 'auto',
+                googlePay: 'auto'
+            }
         });
 
         // Show payment modal

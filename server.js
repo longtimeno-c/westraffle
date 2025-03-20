@@ -301,10 +301,23 @@ app.post('/raffles/:id/purchase', async (req, res) => {
             },
             receipt_email: req.body.email,
             shipping: {
-                name: req.body.name
+                name: req.body.name,
+                address: {
+                    line1: req.body.address || '123 Main St', // Default fallback address
+                    city: req.body.city || 'Anytown',
+                    state: req.body.state || 'CA',
+                    postal_code: req.body.zip || '12345',
+                    country: req.body.country || 'US'
+                }
+            },
+            payment_method_options: {
+                card: {
+                    request_three_d_secure: 'automatic'
+                }
             },
             automatic_payment_methods: {
                 enabled: true,
+                allow_redirects: 'never'
             }
         });
 
@@ -342,6 +355,16 @@ app.post('/create-payment-intent', async (req, res) => {
             },
             automatic_payment_methods: {
                 enabled: true,
+            },
+            shipping: {
+                name: req.body.name || 'Customer',
+                address: {
+                    line1: req.body.address || '123 Main St',
+                    city: req.body.city || 'Anytown',
+                    state: req.body.state || 'CA',
+                    postal_code: req.body.zip || '12345',
+                    country: req.body.country || 'US'
+                }
             }
         });
 
@@ -363,6 +386,16 @@ app.post('/create-bid-payment-intent', async (req, res) => {
             metadata: {
                 raffleId,
                 type: 'auction_bid'
+            },
+            shipping: {
+                name: req.body.name || 'Customer',
+                address: {
+                    line1: req.body.address || '123 Main St',
+                    city: req.body.city || 'Anytown',
+                    state: req.body.state || 'CA',
+                    postal_code: req.body.zip || '12345',
+                    country: req.body.country || 'US'
+                }
             }
         });
 
@@ -422,6 +455,16 @@ app.post('/raffles/:id/bid', async (req, res) => {
                 type: 'auction_bid'
             },
             receipt_email: req.body.email,
+            shipping: {
+                name: req.body.name || 'Customer',
+                address: {
+                    line1: req.body.address || '123 Main St',
+                    city: req.body.city || 'Anytown',
+                    state: req.body.state || 'CA',
+                    postal_code: req.body.zip || '12345',
+                    country: req.body.country || 'US'
+                }
+            },
             automatic_payment_methods: {
                 enabled: true,
                 allow_redirects: 'never'
