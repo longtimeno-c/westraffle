@@ -79,9 +79,10 @@
             <% if (raffle.raffleType === 'tickets') { %>
                 <div class="mb-12">
                     <div class="w-full bg-gray-100 rounded-full h-4 mb-3">
-                        <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary h-4 rounded-full transition-all duration-500" 
-                             style="width: <%= (raffle.soldTickets / raffle.totalTickets) * 100 %>%">
-                        </div>
+                        <% const progressWidth = (raffle.soldTickets / raffle.totalTickets) * 100; %>
+                        <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary h-4 rounded-full transition-all duration-500"
+                            style="width: <%=progressWidth%>%"
+                        ></div>
                     </div>
                     <p class="text-center text-gray-600 font-medium">
                         <%= Math.round((raffle.soldTickets / raffle.totalTickets) * 100) %>% of tickets sold
@@ -126,7 +127,7 @@
             <% } else { %>
                 <div class="mb-12">
                     <h2 class="text-3xl font-bold text-gray-800 mb-8">Place a Bid</h2>
-                    <form action="/raffles/<%= raffle.id %>/bid" method="POST" class="space-y-8">
+                    <form id="bid-form" action="/raffles/<%= raffle.id %>/bid" method="POST" class="space-y-8">
                         <div>
                             <label for="bidAmount" class="block text-sm font-medium text-gray-700 mb-2">Your Bid Amount ($)</label>
                             <input type="number" name="bidAmount" id="bidAmount" min="<%= raffle.currentBid + raffle.minimumBidIncrement %>" step="0.01" required
@@ -175,4 +176,76 @@
             <% } %>
         </div>
     </div>
-</div> 
+</div>
+
+<!-- Add these scripts before the closing body tag -->
+<script>
+    const STRIPE_PUBLIC_KEY = '<%- process.env.STRIPE_PUBLIC_KEY %>';
+    const ENABLE_PAYMENTS = '<%- process.env.ENABLE_PAYMENTS %>';
+</script>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="/js/stripe-handler.js"></script>
+
+<!-- Only show payment modal if payments are enabled -->
+<% if (process.env.ENABLE_PAYMENTS === 'true') { %>
+<div id="payment-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closePaymentModal()">&times;</span>
+        <h2>Complete Your Bid</h2>
+        <form id="payment-form">
+            <div id="payment-element">
+                <!-- Stripe Payment Element will be inserted here -->
+            </div>
+            <div id="payment-message" class="payment-message"></div>
+            <button type="submit" class="btn btn-primary">Submit Payment</button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 500px;
+    }
+
+    .close {
+        float: right;
+        cursor: pointer;
+        font-size: 28px;
+    }
+
+    .payment-message {
+        color: #dc3545;
+        margin-top: 10px;
+    }
+
+    #payment-element {
+        margin: 24px 0;
+    }
+</style>
+<% } %>
+
+<!-- Modify the existing bid form to use our new payment handler -->
+<script>
+document.getElementById('bid-form').onsubmit = async function(e) {
+    e.preventDefault();
+    const bidAmount = document.getElementById('bidAmount').value;
+    const raffleId = '<%= raffle.id %>';
+    await handleBidSubmission(raffleId, bidAmount);
+};
+</script> 

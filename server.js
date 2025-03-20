@@ -8,6 +8,9 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 require('dotenv').config();
 
+// Initialize Stripe
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -224,7 +227,7 @@ app.get('/raffles/:id', (req, res) => {
     });
 });
 
-app.post('/raffles/:id/purchase', (req, res) => {
+app.post('/raffles/:id/purchase', async (req, res) => {
     const raffles = readRaffles();
     const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
     
@@ -245,67 +248,277 @@ app.post('/raffles/:id/purchase', (req, res) => {
         });
     }
 
-    // Add tickets to the raffle
-    for (let i = 0; i < quantity; i++) {
-        raffle.tickets.push({
-            id: Date.now().toString() + i,
-            name: req.body.name,
-            email: req.body.email,
-            purchaseDate: new Date().toISOString()
+    // Calculate total amount
+    const amount = quantity * raffle.ticketPrice;
+
+    try {
+        // Create a payment intent
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100),
+            currency: 'usd',
+            metadata: {
+                raffleId: raffle.id,
+                quantity: quantity,
+                type: 'ticket_purchase'
+            },
+            receipt_email: req.body.email,
+            shipping: {
+                name: req.body.name
+            }
+        });
+
+        // Render payment page with client secret
+        res.render('payment', {
+            title: 'Purchase Tickets',
+            clientSecret: paymentIntent.client_secret,
+            amount: amount,
+            quantity: quantity,
+            raffle: raffle,
+            publicKey: process.env.STRIPE_PUBLISHABLE_KEY
+        });
+    } catch (error) {
+        console.error('Error creating payment intent:', error);
+        res.status(500).render('error', {
+            title: 'Payment Error',
+            message: 'There was an error processing your payment. Please try again.'
         });
     }
+});
 
-    raffle.soldTickets += quantity;
-    writeRaffles(raffles);
+// Create a payment intent for ticket purchase
+app.post('/create-payment-intent', async (req, res) => {
+    try {
+        const { amount, raffleId, quantity } = req.body;
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Convert to cents
+            currency: 'usd',
+            metadata: {
+                raffleId,
+                quantity,
+                type: 'ticket_purchase'
+            }
+        });
 
-    // In a real application, you would handle payment processing here
-    res.redirect(`/raffles/${raffle.id}?success=true`);
+        res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+        console.error('Error creating payment intent:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Create a payment intent for auction bid
+app.post('/create-bid-payment-intent', async (req, res) => {
+    try {
+        const { amount, raffleId } = req.body;
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Convert to cents
+            currency: 'usd',
+            metadata: {
+                raffleId,
+                type: 'auction_bid'
+            }
+        });
+
+        res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+        console.error('Error creating bid payment intent:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Webhook handler for Stripe events
+app.post('/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        console.error('Webhook Error:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle successful payments
+    if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object;
+        const metadata = paymentIntent.metadata;
+
+        const raffles = readRaffles();
+        const raffleIndex = raffles.findIndex(r => r.id === metadata.raffleId);
+        
+        if (raffleIndex === -1) {
+            console.error('Raffle not found:', metadata.raffleId);
+            return res.status(400).send('Raffle not found');
+        }
+
+        const raffle = raffles[raffleIndex];
+
+        if (metadata.type === 'ticket_purchase') {
+            // Add purchased tickets
+            const quantity = parseInt(metadata.quantity);
+            for (let i = 0; i < quantity; i++) {
+                raffle.tickets.push({
+                    id: Date.now().toString() + i,
+                    name: paymentIntent.shipping?.name || 'Anonymous',
+                    email: paymentIntent.receipt_email || 'anonymous@example.com',
+                    purchaseDate: new Date().toISOString(),
+                    paymentIntentId: paymentIntent.id
+                });
+            }
+            raffle.soldTickets += quantity;
+        } else if (metadata.type === 'auction_bid') {
+            // Add new bid
+            const bidAmount = paymentIntent.amount / 100; // Convert from cents
+            raffle.bids.push({
+                amount: bidAmount,
+                name: paymentIntent.shipping?.name || 'Anonymous',
+                email: paymentIntent.receipt_email || 'anonymous@example.com',
+                timestamp: new Date().toISOString(),
+                paymentIntentId: paymentIntent.id
+            });
+            raffle.currentBid = bidAmount;
+        }
+
+        writeRaffles(raffles);
+    }
+
+    res.json({received: true});
 });
 
 // Add new route for placing bids
-app.post('/raffles/:id/bid', (req, res) => {
-    const raffles = readRaffles();
-    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
-    
-    if (raffleIndex === -1) {
-        return res.status(404).render('error', {
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
+app.post('/raffles/:id/bid', async (req, res) => {
+    try {
+        const raffles = readRaffles();
+        const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+        
+        if (raffleIndex === -1) {
+            return res.status(404).render('error', {
+                title: 'Raffle Not Found',
+                message: 'The requested raffle could not be found.'
+            });
+        }
+
+        const raffle = raffles[raffleIndex];
+        
+        if (raffle.raffleType !== 'auction') {
+            return res.status(400).render('error', {
+                title: 'Invalid Operation',
+                message: 'This raffle does not accept bids.'
+            });
+        }
+
+        const bidAmount = parseFloat(req.body.bidAmount);
+        const minimumBid = raffle.currentBid + raffle.minimumBidIncrement;
+        
+        if (bidAmount < minimumBid) {
+            return res.status(400).render('error', {
+                title: 'Invalid Bid',
+                message: `Bid must be at least $${minimumBid}`
+            });
+        }
+
+        // Create a payment intent for the bid
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(bidAmount * 100),
+            currency: 'usd',
+            metadata: {
+                raffleId: raffle.id,
+                type: 'auction_bid'
+            },
+            receipt_email: req.body.email,
+            automatic_payment_methods: {
+                enabled: true,
+            }
+        });
+
+        // Render payment page with client secret
+        res.render('payment', {
+            title: 'Place Bid',
+            clientSecret: paymentIntent.client_secret,
+            amount: bidAmount,
+            raffle: raffle,
+            publicKey: process.env.STRIPE_PUBLISHABLE_KEY,
+            isBid: true
+        });
+    } catch (error) {
+        console.error('Error processing bid:', error);
+        res.status(500).render('error', {
+            title: 'Bid Error',
+            message: 'There was an error processing your bid. Please try again.'
         });
     }
+});
 
-    const raffle = raffles[raffleIndex];
-    
-    if (raffle.raffleType !== 'auction') {
-        return res.status(400).render('error', {
-            title: 'Invalid Operation',
-            message: 'This raffle does not accept bids.'
+// Add a GET route for bid confirmation
+app.get('/raffles/:id/bid', (req, res) => {
+    try {
+        const raffles = readRaffles();
+        const raffle = raffles.find(r => r.id === req.params.id);
+        
+        if (!raffle) {
+            return res.status(404).render('error', {
+                title: 'Raffle Not Found',
+                message: 'The requested raffle could not be found.'
+            });
+        }
+        
+        // Redirect to the raffle page if GET request is made directly
+        res.redirect(`/raffles/${req.params.id}`);
+    } catch (error) {
+        console.error('Error processing bid page:', error);
+        res.status(500).render('error', {
+            title: 'Error',
+            message: 'There was an error processing your request. Please try again.'
         });
     }
+});
 
-    const bidAmount = parseFloat(req.body.bidAmount);
-    const minimumBid = raffle.currentBid + raffle.minimumBidIncrement;
-    
-    if (bidAmount < minimumBid) {
-        return res.status(400).render('error', {
-            title: 'Invalid Bid',
-            message: `Your bid must be at least $${minimumBid.toFixed(2)} higher than the current bid.`
-        });
+// Add route to handle raffle completion
+app.post('/raffles/:id/complete', async (req, res) => {
+    try {
+        const raffles = readRaffles();
+        const raffle = raffles.find(r => r.id === req.params.id);
+        
+        if (!raffle) {
+            return res.status(404).json({ error: 'Raffle not found' });
+        }
+
+        // Find winning bid
+        const winningBid = raffle.bids.reduce((prev, current) => 
+            (prev.amount > current.amount) ? prev : current
+        , raffle.bids[0]);
+
+        if (process.env.ENABLE_PAYMENTS === 'true') {
+            // Process payments only if payment system is enabled
+            for (const bid of raffle.bids) {
+                if (bid.paymentIntentId) {
+                    try {
+                        if (bid === winningBid) {
+                            // Capture payment for winning bid
+                            await stripe.paymentIntents.capture(bid.paymentIntentId);
+                        } else {
+                            // Cancel payment intent for losing bids
+                            await stripe.paymentIntents.cancel(bid.paymentIntentId);
+                        }
+                    } catch (error) {
+                        console.error('Error processing payment for bid:', error);
+                    }
+                }
+            }
+        }
+
+        // Update raffle status
+        raffle.completed = true;
+        raffle.winner = winningBid.bidder;
+        writeRaffles(raffles);
+
+        res.json({ success: true, winner: winningBid.bidder });
+    } catch (error) {
+        console.error('Error completing raffle:', error);
+        res.status(500).json({ error: 'Error completing raffle' });
     }
-
-    // Add the bid
-    raffle.bids.push({
-        id: Date.now().toString(),
-        amount: bidAmount,
-        name: req.body.name,
-        email: req.body.email,
-        timestamp: new Date().toISOString()
-    });
-
-    raffle.currentBid = bidAmount;
-    writeRaffles(raffles);
-
-    res.redirect(`/raffles/${raffle.id}?success=true`);
 });
 
 // Error handling middleware
