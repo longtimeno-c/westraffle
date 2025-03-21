@@ -1,0 +1,183 @@
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="flex justify-between items-start mb-8">
+                <h1 class="text-4xl font-bold text-gray-800"><%= auction.title %></h1>
+                <span class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-2 rounded-full text-lg font-semibold">
+                    Current Bid: $<%= auction.currentBid %>
+                </span>
+            </div>
+
+            <% if (auction.imageUrl) { %>
+                <div class="mb-8">
+                    <img src="<%= auction.imageUrl %>" alt="<%= auction.title %>" 
+                         class="w-full h-96 object-cover rounded-xl shadow-lg">
+                </div>
+            <% } %>
+
+            <div class="prose max-w-none mb-12">
+                <p class="text-gray-600 text-lg leading-relaxed"><%= auction.description %></p>
+            </div>
+
+            <!-- Auction Details Section -->
+            <div class="mb-12">
+                <div class="card-gradient p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Auction Details</h2>
+                    <div class="grid grid-cols-2 gap-x-12 gap-y-4 sm:grid-cols-4">
+                        <div>
+                            <h3 class="text-gray-600 text-sm">Starting Bid</h3>
+                            <p class="font-semibold text-gray-800 text-xl">$<%= auction.startingBid %></p>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-600 text-sm">Current Bid</h3>
+                            <p class="font-semibold text-gray-800 text-xl">$<%= auction.currentBid %></p>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-600 text-sm">Minimum Increment</h3>
+                            <p class="font-semibold text-gray-800 text-xl">$<%= auction.minimumBidIncrement %></p>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-600 text-sm">End Date</h3>
+                            <p class="font-semibold text-gray-800 text-xl"><%= new Date(auction.endDate).toLocaleDateString() %></p>
+                        </div>
+                    </div>
+                    
+                    <% if (auction.itemValue || auction.itemCondition || auction.donorName) { %>
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Item Information</h3>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <% if (auction.itemValue) { %>
+                                    <div>
+                                        <h4 class="text-gray-600 text-sm">Estimated Value</h4>
+                                        <p class="font-semibold text-gray-800">$<%= auction.itemValue %></p>
+                                    </div>
+                                <% } %>
+                                
+                                <% if (auction.itemCondition) { %>
+                                    <div>
+                                        <h4 class="text-gray-600 text-sm">Condition</h4>
+                                        <p class="font-semibold text-gray-800"><%= auction.itemCondition %></p>
+                                    </div>
+                                <% } %>
+                                
+                                <% if (auction.donorName) { %>
+                                    <div>
+                                        <h4 class="text-gray-600 text-sm">Donated By</h4>
+                                        <p class="font-semibold text-gray-800"><%= auction.donorName %></p>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <% if (auction.isCompleted) { %>
+                <!-- Auction Result Section -->
+                <div class="mb-12">
+                    <div class="card-gradient p-6 rounded-xl">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Auction Result</h2>
+                        <% if (auction.winner) { %>
+                            <div class="p-4 bg-green-50 rounded-lg">
+                                <div class="text-lg font-semibold text-green-800">Winning Bid: $<%= auction.winner.bid %></div>
+                                <div class="mt-2 text-green-700">Winner: <%= auction.winner.name %></div>
+                                <div class="mt-4 text-sm text-green-600">This auction closed on <%= new Date(auction.completedAt).toLocaleString() %></div>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center py-8">
+                                <p class="text-gray-600">This auction was completed, but no winner was determined.</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            <% } else { %>
+                <!-- Bid History -->
+                <div class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Bid History</h2>
+                    
+                    <% if (auction.bids && auction.bids.length > 0) { %>
+                        <div class="card-gradient rounded-xl overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50/50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bidder</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white/50 divide-y divide-gray-200">
+                                    <% auction.bids.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(bid => { %>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><%= bid.name %></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">$<%= bid.amount %></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= new Date(bid.timestamp).toLocaleString() %></td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-8 card-gradient rounded-xl">
+                            <p class="text-gray-600">No bids have been placed yet. Be the first to bid!</p>
+                        </div>
+                    <% } %>
+                </div>
+            <% } %>
+            
+            <% 
+                const now = new Date();
+                const endDate = new Date(auction.endDate); 
+                const isEnded = endDate <= now;
+                const minimumBid = auction.currentBid + auction.minimumBidIncrement;
+            %>
+            
+            <% if (!isEnded && !auction.isCompleted) { %>
+                <!-- Place Bid Form -->
+                <div class="mb-12">
+                    <div class="card-gradient rounded-xl p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Place Your Bid</h2>
+                        
+                        <form action="/auctions/<%= auction.id %>/bid" method="POST" class="space-y-6">
+                            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <div>
+                                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                                    <input type="text" name="name" id="name" required
+                                        value="<%= username || '' %>"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                                        placeholder="Enter your name">
+                                </div>
+                                <div>
+                                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                                    <input type="email" name="email" id="email" required
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                                        placeholder="Enter your email address">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="bidAmount" class="block text-sm font-medium text-gray-700 mb-2">Your Bid Amount ($)</label>
+                                <input type="number" name="bidAmount" id="bidAmount" step="0.01" min="<%= minimumBid %>" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                                    placeholder="Enter your bid amount">
+                                <p class="mt-2 text-sm text-gray-500">Minimum bid: $<%= minimumBid.toFixed(2) %></p>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button type="submit" class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                                    Place Bid
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            <% } else { %>
+                <div class="mb-12">
+                    <div class="bg-gray-100 rounded-xl p-6 text-center">
+                        <h2 class="text-xl font-semibold text-gray-700 mb-2">This auction has ended</h2>
+                        <p class="text-gray-600">Bidding is no longer available for this item.</p>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div> 

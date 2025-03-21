@@ -53,6 +53,21 @@ const writeRaffles = (raffles) => {
     fs.writeFileSync(rafflesPath, JSON.stringify(raffles, null, 2));
 };
 
+// Helper function to read auctions
+const readAuctions = () => {
+    const auctionsPath = path.join(dataDir, 'auctions.json');
+    if (fs.existsSync(auctionsPath)) {
+        return JSON.parse(fs.readFileSync(auctionsPath, 'utf8'));
+    }
+    return [];
+};
+
+// Helper function to write auctions
+const writeAuctions = (auctions) => {
+    const auctionsPath = path.join(dataDir, 'auctions.json');
+    fs.writeFileSync(auctionsPath, JSON.stringify(auctions, null, 2));
+};
+
 // Helper function to generate a unique ticket number
 const generateTicketNumber = (raffleId, index) => {
     // Create a formatted raffle ID + sequential number
@@ -104,15 +119,16 @@ const upload = multer({
 });
 
 // Helper function to calculate impact metrics
-const calculateImpactMetrics = (raffles) => {
+const calculateImpactMetrics = (raffles, auctions) => {
     let totalRaised = 0;
     let activeRaffles = 0;
+    let activeAuctions = 0;
     let uniqueSupporters = new Set();
 
     const now = new Date();
 
+    // Calculate metrics from raffles
     raffles.forEach(raffle => {
-        // All raffles are ticket-based now
         totalRaised += (raffle.soldTickets || 0) * raffle.ticketPrice;
         if (raffle.tickets) {
             raffle.tickets.forEach(ticket => {
@@ -120,16 +136,36 @@ const calculateImpactMetrics = (raffles) => {
             });
         }
 
-        // Properly handle date comparison
+        // Check if raffle is active
         const endDate = new Date(raffle.endDate);
         if (!isNaN(endDate.getTime()) && endDate > now) {
             activeRaffles++;
         }
     });
 
+    // Calculate metrics from auctions
+    auctions.forEach(auction => {
+        if (auction.currentBid > 0) {
+            totalRaised += auction.currentBid;
+        }
+        if (auction.bids) {
+            auction.bids.forEach(bid => {
+                uniqueSupporters.add(bid.email);
+            });
+        }
+
+        // Check if auction is active
+        const endDate = new Date(auction.endDate);
+        if (!isNaN(endDate.getTime()) && endDate > now) {
+            activeAuctions++;
+        }
+    });
+
     return {
         totalRaised,
         activeRaffles,
+        activeAuctions,
+        totalActivities: activeRaffles + activeAuctions,
         totalSupporters: uniqueSupporters.size
     };
 };
@@ -137,17 +173,20 @@ const calculateImpactMetrics = (raffles) => {
 // Routes
 app.get('/', (req, res) => {
     const raffles = readRaffles();
-    const metrics = calculateImpactMetrics(raffles);
+    const auctions = readAuctions();
+    const metrics = calculateImpactMetrics(raffles, auctions);
     res.render('index', { 
         title: 'West Raffle - Charity Fundraising', 
         raffles,
+        auctions,
         metrics 
     });
 });
 
 app.get('/raffles', (req, res) => {
     const raffles = readRaffles();
-    const metrics = calculateImpactMetrics(raffles);
+    const auctions = readAuctions();
+    const metrics = calculateImpactMetrics(raffles, auctions);
     res.render('raffles', { 
         title: 'Active Raffles', 
         raffles,
@@ -157,13 +196,15 @@ app.get('/raffles', (req, res) => {
 
 app.get('/charity', (req, res) => {
     const raffles = readRaffles();
-    const metrics = calculateImpactMetrics(raffles);
+    const auctions = readAuctions();
+    const metrics = calculateImpactMetrics(raffles, auctions);
     res.render('charity', { 
         title: 'Our Charity Mission',
         metrics
     });
 });
 
+// Separate routes for creating raffles and auctions
 app.get('/create-raffle', (req, res) => {
     if (req.cookies.username !== process.env.ADMIN_USERNAME) {
         return res.status(403).render('error', {
@@ -174,22 +215,29 @@ app.get('/create-raffle', (req, res) => {
     res.render('create-raffle', { title: 'Create New Raffle' });
 });
 
+app.get('/create-auction', (req, res) => {
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to create auctions.'
+        });
+    }
+    res.render('create-auction', { title: 'Create New Auction' });
+});
+
 app.post('/create-raffle', upload.single('image'), (req, res) => {
     const raffles = readRaffles();
     const newRaffle = {
         id: Date.now().toString(),
         ...req.body,
         createdAt: new Date().toISOString(),
-        imageUrl: req.file ? `/images/raffles/${req.file.filename}` : null
+        imageUrl: req.file ? `/images/raffles/${req.file.filename}` : null,
+        soldTickets: 0,
+        tickets: [],
+        ticketPrice: parseFloat(req.body.ticketPrice),
+        totalTickets: parseInt(req.body.totalTickets),
+        prizes: [] // Initialize empty prizes array
     };
-
-    // All raffles are ticket-based now
-    newRaffle.raffleType = 'tickets';
-    newRaffle.soldTickets = 0;
-    newRaffle.tickets = [];
-    newRaffle.ticketPrice = parseFloat(req.body.ticketPrice);
-    newRaffle.totalTickets = parseInt(req.body.totalTickets);
-    newRaffle.prizes = []; // Initialize empty prizes array
     
     raffles.push(newRaffle);
     writeRaffles(raffles);
@@ -197,6 +245,29 @@ app.post('/create-raffle', upload.single('image'), (req, res) => {
     res.redirect('/raffles');
 });
 
+app.post('/create-auction', upload.single('image'), (req, res) => {
+    const auctions = readAuctions();
+    const newAuction = {
+        id: Date.now().toString(),
+        ...req.body,
+        createdAt: new Date().toISOString(),
+        imageUrl: req.file ? `/images/raffles/${req.file.filename}` : null,
+        currentBid: parseFloat(req.body.startingBid) || 0,
+        startingBid: parseFloat(req.body.startingBid) || 0,
+        minimumBidIncrement: parseFloat(req.body.minimumBidIncrement) || 1,
+        bids: [],
+        itemCondition: req.body.itemCondition,
+        itemValue: parseFloat(req.body.itemValue) || 0,
+        donorName: req.body.donorName
+    };
+    
+    auctions.push(newAuction);
+    writeAuctions(auctions);
+    
+    res.redirect('/auctions');
+});
+
+// Routes for viewing raffles and auctions
 app.get('/raffles/:id', (req, res) => {
     const raffles = readRaffles();
     const raffle = raffles.find(r => r.id === req.params.id);
@@ -210,10 +281,30 @@ app.get('/raffles/:id', (req, res) => {
     
     res.render('raffle-detail', { 
         title: raffle.title,
-        raffle 
+        raffle,
+        isAuction: false
     });
 });
 
+app.get('/auctions/:id', (req, res) => {
+    const auctions = readAuctions();
+    const auction = auctions.find(a => a.id === req.params.id);
+    
+    if (!auction) {
+        return res.status(404).render('error', { 
+            title: 'Auction Not Found',
+            message: 'The requested auction could not be found.'
+        });
+    }
+    
+    res.render('auction-detail', { 
+        title: auction.title,
+        auction,
+        isAuction: true
+    });
+});
+
+// Routes for purchasing tickets and placing bids
 app.post('/raffles/:id/purchase', (req, res) => {
     const raffles = readRaffles();
     const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
@@ -255,183 +346,66 @@ app.post('/raffles/:id/purchase', (req, res) => {
     res.redirect(`/raffles/${raffle.id}?success=true`);
 });
 
-// Add a new route for managing prizes
-app.get('/raffles/:id/prizes', (req, res) => {
-    // Only admins can access this page
-    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
-        return res.status(403).render('error', {
-            title: 'Access Denied',
-            message: 'You do not have permission to manage prizes.'
-        });
-    }
-
+// Add a route for auctions
+app.get('/auctions', (req, res) => {
+    const auctions = readAuctions();
     const raffles = readRaffles();
-    const raffle = raffles.find(r => r.id === req.params.id);
+    const metrics = calculateImpactMetrics(raffles, auctions);
     
-    if (!raffle) {
-        return res.status(404).render('error', { 
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
-        });
-    }
-    
-    res.render('manage-prizes', { 
-        title: `Manage Prizes - ${raffle.title}`,
-        raffle 
+    res.render('auctions', { 
+        title: 'Active Auctions', 
+        auctions,
+        metrics 
     });
 });
 
-// Add a new route for adding prizes
-app.post('/raffles/:id/prizes', upload.single('prizeImage'), (req, res) => {
-    // Only admins can add prizes
-    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
-        return res.status(403).render('error', {
-            title: 'Access Denied',
-            message: 'You do not have permission to add prizes.'
-        });
-    }
-
-    const raffles = readRaffles();
-    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+// Add new route for placing bids
+app.post('/auctions/:id/bid', (req, res) => {
+    const auctions = readAuctions();
+    const auctionIndex = auctions.findIndex(a => a.id === req.params.id);
     
-    if (raffleIndex === -1) {
+    if (auctionIndex === -1) {
         return res.status(404).render('error', {
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
+            title: 'Auction Not Found',
+            message: 'The requested auction could not be found.'
         });
     }
 
-    const raffle = raffles[raffleIndex];
+    const auction = auctions[auctionIndex];
     
-    // Create a new prize
-    const prize = {
-        id: Date.now().toString(),
-        name: req.body.prizeName,
-        description: req.body.prizeDescription,
-        value: parseFloat(req.body.prizeValue),
-        imageUrl: req.file ? `/images/raffles/${req.file.filename}` : null,
-        addedAt: new Date().toISOString(),
-        winningTicket: null, // Will be filled when the raffle is drawn
-        winner: null // Will be filled when the raffle is drawn
-    };
-    
-    // Add the prize to the raffle
-    if (!raffle.prizes) {
-        raffle.prizes = [];
-    }
-    raffle.prizes.push(prize);
-    writeRaffles(raffles);
-    
-    res.redirect(`/raffles/${raffle.id}/prizes`);
-});
-
-// Add a new route for drawing the raffle
-app.post('/raffles/:id/draw', (req, res) => {
-    // Only admins can draw the raffle
-    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
-        return res.status(403).render('error', {
-            title: 'Access Denied',
-            message: 'You do not have permission to draw the raffle.'
-        });
-    }
-
-    const raffles = readRaffles();
-    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
-    
-    if (raffleIndex === -1) {
-        return res.status(404).render('error', {
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
-        });
-    }
-
-    const raffle = raffles[raffleIndex];
-    
-    // Check if the raffle has tickets and prizes
-    if (!raffle.tickets || raffle.tickets.length === 0) {
-        return res.status(400).render('error', {
-            title: 'Cannot Draw Raffle',
-            message: 'This raffle has no tickets sold.'
-        });
-    }
-    
-    if (!raffle.prizes || raffle.prizes.length === 0) {
-        return res.status(400).render('error', {
-            title: 'Cannot Draw Raffle',
-            message: 'This raffle has no prizes to award.'
-        });
-    }
-    
-    // Check if the raffle end date has passed
+    // Check if auction has ended
     const now = new Date();
-    const endDate = new Date(raffle.endDate);
-    if (endDate > now) {
+    const endDate = new Date(auction.endDate);
+    if (endDate <= now) {
         return res.status(400).render('error', {
-            title: 'Cannot Draw Raffle',
-            message: 'This raffle has not ended yet.'
+            title: 'Auction Ended',
+            message: 'This auction has already ended.'
         });
     }
-    
-    // Draw the raffle
-    const tickets = [...raffle.tickets];
-    
-    // For each prize, randomly select a winning ticket
-    for (const prize of raffle.prizes) {
-        if (tickets.length === 0) break; // Stop if we run out of tickets
-        
-        // Only draw if this prize hasn't been drawn yet
-        if (!prize.winningTicket) {
-            // Get a random ticket
-            const randomIndex = Math.floor(Math.random() * tickets.length);
-            const winningTicket = tickets[randomIndex];
-            
-            // Remove this ticket from the available tickets pool
-            tickets.splice(randomIndex, 1);
-            
-            // Assign the winner
-            prize.winningTicket = winningTicket.ticketNumber;
-            prize.winner = {
-                name: winningTicket.name,
-                email: winningTicket.email
-            };
-        }
-    }
-    
-    // Save the updated raffle
-    raffle.isDrawn = true;
-    raffle.drawnAt = new Date().toISOString();
-    writeRaffles(raffles);
-    
-    res.redirect(`/raffles/${raffle.id}/results`);
-});
 
-// Add a route to view raffle results
-app.get('/raffles/:id/results', (req, res) => {
-    const raffles = readRaffles();
-    const raffle = raffles.find(r => r.id === req.params.id);
+    const bidAmount = parseFloat(req.body.bidAmount);
+    const minimumBid = auction.currentBid + (auction.minimumBidIncrement || 1);
     
-    if (!raffle) {
-        return res.status(404).render('error', { 
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
+    if (bidAmount < minimumBid) {
+        return res.status(400).render('error', {
+            title: 'Invalid Bid',
+            message: `Your bid must be at least $${minimumBid.toFixed(2)}.`
         });
     }
-    
-    res.render('raffle-results', { 
-        title: `Results - ${raffle.title}`,
-        raffle 
-    });
-});
 
-// Add a route to list all drawn raffles
-app.get('/results', (req, res) => {
-    const raffles = readRaffles();
-    const drawnRaffles = raffles.filter(raffle => raffle.isDrawn);
-    
-    res.render('all-results', { 
-        title: 'Raffle Results',
-        raffles: drawnRaffles
+    // Add the bid
+    auction.bids.push({
+        id: Date.now().toString(),
+        amount: bidAmount,
+        name: req.body.name,
+        email: req.body.email,
+        timestamp: new Date().toISOString()
     });
+
+    auction.currentBid = bidAmount;
+    writeAuctions(auctions);
+
+    res.redirect(`/auctions/${auction.id}?success=true`);
 });
 
 // Admin dashboard route
@@ -445,108 +419,164 @@ app.get('/admin', (req, res) => {
     }
 
     const raffles = readRaffles();
+    const auctions = readAuctions();
     
     res.render('admin-dashboard', { 
         title: 'Admin Dashboard',
-        raffles: raffles
+        raffles,
+        auctions
     });
 });
 
-// Route to view raffle ticket holders
-app.get('/admin/raffles/:id/tickets', (req, res) => {
-    // Only admins can access this page
+// Route to end an auction immediately
+app.post('/admin/auctions/:id/end', (req, res) => {
+    // Only admins can end auctions
     if (req.cookies.username !== process.env.ADMIN_USERNAME) {
         return res.status(403).render('error', {
             title: 'Access Denied',
-            message: 'You do not have permission to view ticket holders.'
+            message: 'You do not have permission to end auctions.'
         });
     }
 
-    const raffles = readRaffles();
-    const raffle = raffles.find(r => r.id === req.params.id);
+    const auctions = readAuctions();
+    const auctionIndex = auctions.findIndex(a => a.id === req.params.id);
     
-    if (!raffle) {
-        return res.status(404).render('error', { 
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
-        });
-    }
-    
-    res.render('admin-tickets', { 
-        title: `Ticket Holders - ${raffle.title}`,
-        raffle 
-    });
-});
-
-// Route to end a raffle immediately
-app.post('/admin/raffles/:id/end', (req, res) => {
-    // Only admins can end raffles
-    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
-        return res.status(403).render('error', {
-            title: 'Access Denied',
-            message: 'You do not have permission to end raffles.'
-        });
-    }
-
-    const raffles = readRaffles();
-    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
-    
-    if (raffleIndex === -1) {
+    if (auctionIndex === -1) {
         return res.status(404).render('error', {
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
+            title: 'Auction Not Found',
+            message: 'The requested auction could not be found.'
         });
     }
 
-    const raffle = raffles[raffleIndex];
+    const auction = auctions[auctionIndex];
     
-    // Set end date to now to force the raffle to end
-    raffle.endDate = new Date().toISOString();
-    writeRaffles(raffles);
+    // Set end date to now to force the auction to end
+    auction.endDate = new Date().toISOString();
+    writeAuctions(auctions);
     
     res.redirect('/admin');
 });
 
-// Route to remove a prize from a raffle
-app.post('/raffles/:id/prizes/remove/:prizeId', (req, res) => {
-    // Only admins can remove prizes
+// Route to view auction bids
+app.get('/admin/auctions/:id/bids', (req, res) => {
+    // Only admins can access this page
     if (req.cookies.username !== process.env.ADMIN_USERNAME) {
         return res.status(403).render('error', {
             title: 'Access Denied',
-            message: 'You do not have permission to remove prizes.'
+            message: 'You do not have permission to view bids.'
         });
     }
 
-    const raffles = readRaffles();
-    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+    const auctions = readAuctions();
+    const auction = auctions.find(a => a.id === req.params.id);
     
-    if (raffleIndex === -1) {
+    if (!auction) {
+        return res.status(404).render('error', { 
+            title: 'Auction Not Found',
+            message: 'The requested auction could not be found.'
+        });
+    }
+    
+    res.render('admin-bids', { 
+        title: `Bids - ${auction.title}`,
+        auction 
+    });
+});
+
+// Add a route for completing an auction
+app.post('/auctions/:id/complete', (req, res) => {
+    // Only admins can complete auctions
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to complete auctions.'
+        });
+    }
+
+    const auctions = readAuctions();
+    const auctionIndex = auctions.findIndex(a => a.id === req.params.id);
+    
+    if (auctionIndex === -1) {
         return res.status(404).render('error', {
-            title: 'Raffle Not Found',
-            message: 'The requested raffle could not be found.'
+            title: 'Auction Not Found',
+            message: 'The requested auction could not be found.'
         });
     }
 
-    const raffle = raffles[raffleIndex];
+    const auction = auctions[auctionIndex];
     
-    // Don't allow removing prizes if the raffle is already drawn
-    if (raffle.isDrawn) {
+    // Check if the auction has bids
+    if (!auction.bids || auction.bids.length === 0) {
         return res.status(400).render('error', {
-            title: 'Cannot Remove Prize',
-            message: 'Cannot remove prizes from a raffle that has already been drawn.'
+            title: 'Cannot Complete Auction',
+            message: 'This auction has no bids.'
         });
     }
     
-    // Find the prize and remove it
-    if (raffle.prizes) {
-        const prizeIndex = raffle.prizes.findIndex(p => p.id === req.params.prizeId);
-        if (prizeIndex !== -1) {
-            raffle.prizes.splice(prizeIndex, 1);
-            writeRaffles(raffles);
-        }
+    // Check if the auction end date has passed
+    const now = new Date();
+    const endDate = new Date(auction.endDate);
+    if (endDate > now) {
+        return res.status(400).render('error', {
+            title: 'Cannot Complete Auction',
+            message: 'This auction has not ended yet.'
+        });
     }
     
-    res.redirect(`/raffles/${raffle.id}/prizes`);
+    // Find winning bid (should be the highest amount)
+    const winningBid = auction.bids.reduce((highest, bid) => {
+        return bid.amount > highest.amount ? bid : highest;
+    }, { amount: 0 });
+    
+    // Set the auction as completed with winner info
+    auction.isCompleted = true;
+    auction.completedAt = new Date().toISOString();
+    auction.winner = {
+        name: winningBid.name,
+        email: winningBid.email,
+        bid: winningBid.amount
+    };
+    
+    writeAuctions(auctions);
+    
+    res.redirect(`/auctions/${auction.id}/results`);
+});
+
+// Route to view auction results
+app.get('/auctions/:id/results', (req, res) => {
+    const auctions = readAuctions();
+    const auction = auctions.find(a => a.id === req.params.id);
+    
+    if (!auction) {
+        return res.status(404).render('error', { 
+            title: 'Auction Not Found',
+            message: 'The requested auction could not be found.'
+        });
+    }
+    
+    res.render('auction-results', { 
+        title: `Results - ${auction.title}`,
+        auction 
+    });
+});
+
+// Add a route for the combined results page
+app.get('/results', (req, res) => {
+    const raffles = readRaffles();
+    const auctions = readAuctions();
+    
+    // Filter completed raffles and auctions
+    const completedRaffles = raffles.filter(raffle => raffle.isDrawn);
+    const completedAuctions = auctions.filter(auction => auction.isCompleted);
+    
+    const metrics = calculateImpactMetrics(raffles, auctions);
+    
+    res.render('results', {
+        title: 'Results - Raffles and Auctions',
+        completedRaffles,
+        completedAuctions,
+        metrics
+    });
 });
 
 // Error handling middleware

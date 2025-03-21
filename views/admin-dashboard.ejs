@@ -1,12 +1,37 @@
 <div class="max-w-7xl mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold text-gray-800 mb-8">Admin Dashboard</h1>
     
-    <div class="mb-8 flex justify-between items-center">
-        <h2 class="text-2xl font-semibold text-gray-700">All Raffles</h2>
-        <a href="/create-raffle" class="btn-primary">Create New Raffle</a>
+    <div class="mb-8 flex flex-wrap justify-between items-center gap-4">
+        <h2 class="text-2xl font-semibold text-gray-700">Item Management</h2>
+        <div class="flex gap-4">
+            <a href="/create-raffle" class="btn-primary">Create New Raffle</a>
+            <a href="/create-auction" class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">Create New Auction</a>
+        </div>
     </div>
     
-    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+    <!-- Tab Navigation -->
+    <div class="mb-6 border-b border-gray-200">
+        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+            <li class="mr-2">
+                <button onclick="showTab('all')" class="tab-button active inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                    All Items
+                </button>
+            </li>
+            <li class="mr-2">
+                <button onclick="showTab('raffles')" class="tab-button inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                    Raffles
+                </button>
+            </li>
+            <li class="mr-2">
+                <button onclick="showTab('auctions')" class="tab-button inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                    Auctions
+                </button>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- Raffles Table -->
+    <div id="raffles-content" class="bg-white rounded-xl shadow-md overflow-hidden mb-8 raffle-tab">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -15,7 +40,6 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prizes</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -37,7 +61,7 @@
                                 statusColor = 'yellow';
                             }
                         %>
-                            <tr>
+                            <tr class="item-row raffle-item">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -59,21 +83,18 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900"><%= raffle.soldTickets || 0 %> / <%= raffle.totalTickets %></div>
-                                    <div class="text-sm text-gray-500"><%= ((raffle.soldTickets || 0) / raffle.totalTickets * 100).toFixed(1) %>% sold</div>
+                                    <div class="text-sm text-gray-900"><%= raffle.soldTickets || 0 %>/<%= raffle.totalTickets %> sold</div>
+                                    <div class="text-sm text-gray-500"><%= raffle.prizes ? raffle.prizes.length : 0 %> prizes</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <%= endDate.toLocaleDateString() %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <%= raffle.prizes ? raffle.prizes.length : 0 %> prizes
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                     <a href="/raffles/<%= raffle.id %>" class="text-indigo-600 hover:text-indigo-900">View</a>
                                     <a href="/admin/raffles/<%= raffle.id %>/tickets" class="text-gray-600 hover:text-gray-900">Tickets</a>
                                     <a href="/raffles/<%= raffle.id %>/prizes" class="text-purple-600 hover:text-purple-900">Prizes</a>
                                     
-                                    <% if (!isDrawn && raffle.prizes && raffle.prizes.length > 0 && raffle.soldTickets > 0) { %>
+                                    <% if (!isDrawn) { %>
                                         <% if (isEnded) { %>
                                             <form method="POST" action="/raffles/<%= raffle.id %>/draw" class="inline">
                                                 <button type="submit" class="text-blue-600 hover:text-blue-900">Draw Raffle</button>
@@ -88,8 +109,8 @@
                             </tr>
                         <% }); %>
                     <% } else { %>
-                        <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                        <tr class="raffle-item">
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                                 No raffles available
                             </td>
                         </tr>
@@ -98,4 +119,139 @@
             </table>
         </div>
     </div>
-</div> 
+    
+    <!-- Auctions Table -->
+    <div id="auctions-content" class="bg-white rounded-xl shadow-md overflow-hidden mb-8 auction-tab hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auction</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Bid</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <% if (auctions && auctions.length > 0) { %>
+                        <% auctions.forEach(auction => { 
+                            const endDate = new Date(auction.endDate);
+                            const now = new Date();
+                            const isEnded = endDate < now;
+                            const isCompleted = auction.isCompleted;
+                            let status = 'Active';
+                            let statusColor = 'green';
+
+                            if (isCompleted) {
+                                status = 'Completed';
+                                statusColor = 'blue';
+                            } else if (isEnded) {
+                                status = 'Ended';
+                                statusColor = 'yellow';
+                            }
+                        %>
+                            <tr class="item-row auction-item">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <% if (auction.imageUrl) { %>
+                                                <img class="h-10 w-10 rounded-full object-cover" src="<%= auction.imageUrl %>" alt="">
+                                            <% } else { %>
+                                                <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600"></div>
+                                            <% } %>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900"><%= auction.title %></div>
+                                            <div class="text-sm text-gray-500">Starting: $<%= auction.startingBid %></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-<%= statusColor %>-100 text-<%= statusColor %>-800">
+                                        <%= status %>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">$<%= auction.currentBid %></div>
+                                    <div class="text-sm text-gray-500"><%= auction.bids ? auction.bids.length : 0 %> bids</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <%= endDate.toLocaleDateString() %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    <a href="/auctions/<%= auction.id %>" class="text-indigo-600 hover:text-indigo-900">View</a>
+                                    <a href="/admin/auctions/<%= auction.id %>/bids" class="text-gray-600 hover:text-gray-900">Bids</a>
+                                    
+                                    <% if (!isCompleted) { %>
+                                        <% if (isEnded && auction.bids && auction.bids.length > 0) { %>
+                                            <form method="POST" action="/auctions/<%= auction.id %>/complete" class="inline">
+                                                <button type="submit" class="text-blue-600 hover:text-blue-900">Complete Auction</button>
+                                            </form>
+                                        <% } else if (!isEnded) { %>
+                                            <form method="POST" action="/admin/auctions/<%= auction.id %>/end" class="inline">
+                                                <button type="submit" class="text-red-600 hover:text-red-900">End Now</button>
+                                            </form>
+                                        <% } %>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr class="auction-item">
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No auctions available
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tabName) {
+    // Update active tab button
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active', 'text-blue-600', 'border-blue-600');
+        button.classList.add('hover:text-gray-600', 'hover:border-gray-300');
+    });
+    
+    const activeButton = document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`);
+    activeButton.classList.add('active', 'text-blue-600', 'border-blue-600');
+    activeButton.classList.remove('hover:text-gray-600', 'hover:border-gray-300');
+    
+    // Show/hide the appropriate content
+    const raffleContent = document.getElementById('raffles-content');
+    const auctionContent = document.getElementById('auctions-content');
+    
+    // Show all, or filter to show only raffles or auctions
+    if (tabName === 'all') {
+        document.querySelectorAll('.item-row').forEach(row => {
+            row.classList.remove('hidden');
+        });
+        raffleContent.classList.remove('hidden');
+        auctionContent.classList.remove('hidden');
+    } else if (tabName === 'raffles') {
+        raffleContent.classList.remove('hidden');
+        auctionContent.classList.add('hidden');
+    } else if (tabName === 'auctions') {
+        raffleContent.classList.add('hidden');
+        auctionContent.classList.remove('hidden');
+    }
+}
+
+// Custom styles for active tab
+document.addEventListener('DOMContentLoaded', function() {
+    const activeStyle = document.createElement('style');
+    activeStyle.textContent = `
+        .tab-button.active {
+            border-bottom-width: 2px;
+            border-color: rgb(37, 99, 235);
+            color: rgb(37, 99, 235);
+        }
+    `;
+    document.head.appendChild(activeStyle);
+});
+</script> 

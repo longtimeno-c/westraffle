@@ -1,0 +1,228 @@
+<div class="max-w-7xl mx-auto">
+    <div class="mb-10">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4 bg-gradient-to-r from-raffle-primary to-raffle-secondary bg-clip-text text-transparent inline-block">Recent Results</h1>
+        <p class="text-gray-600 text-lg">View the results of our recent raffles and auctions.</p>
+    </div>
+    
+    <!-- Tabs for Raffles/Auctions -->
+    <div class="mb-6 border-b border-gray-200">
+        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+            <li class="mr-2">
+                <button onclick="showTab('all')" class="tab-button active inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                    All Results
+                </button>
+            </li>
+            <li class="mr-2">
+                <button onclick="showTab('raffles')" class="tab-button inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                    Raffle Results
+                </button>
+            </li>
+            <li class="mr-2">
+                <button onclick="showTab('auctions')" class="tab-button inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                    Auction Results
+                </button>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- Raffle Results Section -->
+    <div id="raffle-results" class="result-tab">
+        <% if (completedRaffles && completedRaffles.length > 0) { %>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <% completedRaffles.forEach(raffle => { %>
+                    <div class="card-gradient rounded-xl shadow-lg overflow-hidden hover-scale transition-all duration-300">
+                        <div class="relative">
+                            <% if (raffle.imageUrl) { %>
+                                <img src="<%= raffle.imageUrl %>" alt="<%= raffle.title %>" class="w-full h-52 object-cover">
+                            <% } else { %>
+                                <div class="w-full h-52 bg-gradient-to-r from-raffle-primary to-raffle-secondary flex items-center justify-center">
+                                    <span class="text-white text-2xl font-bold">Raffle Results</span>
+                                </div>
+                            <% } %>
+                            
+                            <div class="absolute top-4 right-4">
+                                <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                    Raffle
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6">
+                            <h2 class="text-xl font-bold text-gray-800 mb-2"><%= raffle.title %></h2>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2"><%= raffle.description %></p>
+                            
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <span class="text-sm text-gray-500">Drawn on: </span>
+                                    <span class="text-gray-700"><%= new Date(raffle.drawnAt).toLocaleDateString() %></span>
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500">Tickets Sold: </span>
+                                    <span class="text-gray-700"><%= raffle.soldTickets %>/<%= raffle.totalTickets %></span>
+                                </div>
+                            </div>
+                            
+                            <% if (raffle.prizes && raffle.prizes.length > 0) { %>
+                                <div class="mt-4 border-t border-gray-100 pt-4">
+                                    <h3 class="text-md font-semibold text-gray-700 mb-2">Winners</h3>
+                                    <ul class="space-y-2">
+                                        <% raffle.prizes.slice(0, 2).forEach(prize => { %>
+                                            <li class="flex justify-between items-center">
+                                                <span class="text-gray-700 text-sm truncate"><%= prize.name %></span>
+                                                <% if (prize.winner) { %>
+                                                    <span class="text-sm font-medium text-gray-700 truncate"><%= prize.winner.name %></span>
+                                                <% } else { %>
+                                                    <span class="text-sm italic text-gray-500">No winner</span>
+                                                <% } %>
+                                            </li>
+                                        <% }); %>
+                                        
+                                        <% if (raffle.prizes.length > 2) { %>
+                                            <li class="text-sm text-gray-500 italic">
+                                                + <%= raffle.prizes.length - 2 %> more prizes
+                                            </li>
+                                        <% } %>
+                                    </ul>
+                                </div>
+                            <% } %>
+                            
+                            <div class="mt-6">
+                                <a href="/raffles/<%= raffle.id %>" class="btn-primary w-full text-center justify-center">
+                                    View Full Results
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div class="card-gradient rounded-xl p-8 text-center mb-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">No Completed Raffles</h3>
+                <p class="text-gray-600">There are no completed raffles to display at this time.</p>
+            </div>
+        <% } %>
+    </div>
+    
+    <!-- Auction Results Section -->
+    <div id="auction-results" class="result-tab">
+        <% if (completedAuctions && completedAuctions.length > 0) { %>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <% completedAuctions.forEach(auction => { %>
+                    <div class="card-gradient rounded-xl shadow-lg overflow-hidden hover-scale transition-all duration-300">
+                        <div class="relative">
+                            <% if (auction.imageUrl) { %>
+                                <img src="<%= auction.imageUrl %>" alt="<%= auction.title %>" class="w-full h-52 object-cover">
+                            <% } else { %>
+                                <div class="w-full h-52 bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                                    <span class="text-white text-2xl font-bold">Auction Results</span>
+                                </div>
+                            <% } %>
+                            
+                            <div class="absolute top-4 right-4">
+                                <span class="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                    Auction
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6">
+                            <h2 class="text-xl font-bold text-gray-800 mb-2"><%= auction.title %></h2>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2"><%= auction.description %></p>
+                            
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <span class="text-sm text-gray-500">Completed on: </span>
+                                    <span class="text-gray-700"><%= new Date(auction.completedAt).toLocaleDateString() %></span>
+                                </div>
+                                <div>
+                                    <span class="text-sm text-gray-500">Total bids: </span>
+                                    <span class="text-gray-700"><%= auction.bids ? auction.bids.length : 0 %></span>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 border-t border-gray-100 pt-4">
+                                <h3 class="text-md font-semibold text-gray-700 mb-2">Final Result</h3>
+                                <% if (auction.winner) { %>
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <span class="text-gray-500 text-sm">Winning Bid:</span>
+                                            <span class="text-gray-900 font-bold ml-1">$<%= auction.winner.bid.toFixed(2) %></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500 text-sm">Winner:</span>
+                                            <span class="text-gray-900 font-medium ml-1"><%= auction.winner.name %></span>
+                                        </div>
+                                    </div>
+                                <% } else { %>
+                                    <p class="text-gray-600 text-sm italic">No winner determined</p>
+                                <% } %>
+                            </div>
+                            
+                            <div class="mt-6">
+                                <a href="/auctions/<%= auction.id %>" class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 w-full flex justify-center">
+                                    View Full Results
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div class="card-gradient rounded-xl p-8 text-center mb-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">No Completed Auctions</h3>
+                <p class="text-gray-600">There are no completed auctions to display at this time.</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+function showTab(tabName) {
+    // Update active tab button
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active', 'text-blue-600', 'border-blue-600');
+        button.classList.add('hover:text-gray-600', 'hover:border-gray-300');
+    });
+    
+    const activeButton = document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`);
+    activeButton.classList.add('active', 'text-blue-600', 'border-blue-600');
+    activeButton.classList.remove('hover:text-gray-600', 'hover:border-gray-300');
+    
+    // Show/hide the appropriate content
+    const raffleResults = document.getElementById('raffle-results');
+    const auctionResults = document.getElementById('auction-results');
+    
+    if (tabName === 'all') {
+        raffleResults.style.display = 'block';
+        auctionResults.style.display = 'block';
+    } else if (tabName === 'raffles') {
+        raffleResults.style.display = 'block';
+        auctionResults.style.display = 'none';
+    } else if (tabName === 'auctions') {
+        raffleResults.style.display = 'none';
+        auctionResults.style.display = 'block';
+    }
+}
+
+// Custom styles for active tab
+document.addEventListener('DOMContentLoaded', function() {
+    const activeStyle = document.createElement('style');
+    activeStyle.textContent = `
+        .tab-button.active {
+            border-bottom-width: 2px;
+            border-color: rgb(37, 99, 235);
+            color: rgb(37, 99, 235);
+        }
+    `;
+    document.head.appendChild(activeStyle);
+    
+    // Initialize tabs
+    showTab('all');
+});
+</script> 
