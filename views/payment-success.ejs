@@ -1,0 +1,70 @@
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 text-green-500 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h1 class="text-4xl font-bold text-gray-800">Payment Successful!</h1>
+                <p class="text-lg text-gray-600 mt-2">Thank you for your purchase.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-inner mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Order Summary</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-gray-600 text-sm">Raffle</p>
+                        <p class="font-semibold text-lg"><%= raffle.title %></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm">Date</p>
+                        <p class="font-semibold"><%= new Date().toLocaleDateString() %></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm">Tickets Purchased</p>
+                        <p class="font-semibold"><%= quantity %></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm">Total Amount</p>
+                        <p class="font-semibold">$<%= totalAmount.toFixed(2) %></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">What's Next?</h2>
+                <div class="bg-blue-50 p-6 rounded-xl border-l-4 border-blue-500">
+                    <ol class="space-y-3">
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-500 mr-2">1</div>
+                            <div>Your tickets have been registered and are now in the raffle pool.</div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-500 mr-2">2</div>
+                            <div>You'll receive a confirmation email with your ticket details shortly.</div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-500 mr-2">3</div>
+                            <div>The raffle will be drawn on <%= new Date(raffle.endDate).toLocaleDateString() %>.</div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-500 mr-2">4</div>
+                            <div>Winners will be notified by email and results will be posted on our website.</div>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="flex space-x-4 justify-center">
+                <a href="/raffles/<%= raffle.id %>" class="px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-200 hover-scale">
+                    Back to Raffle
+                </a>
+                <a href="/raffles" class="btn-primary hover-scale">
+                    Browse More Raffles
+                </a>
+            </div>
+        </div>
+    </div>
+</div> 

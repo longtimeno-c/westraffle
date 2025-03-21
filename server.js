@@ -6,6 +6,7 @@ const fs = require('fs');
 const expressLayouts = require('express-ejs-layouts');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +22,16 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
+
+// Special raw body processing for Stripe webhooks only
+const stripeWebhookPath = '/webhook';
+app.use((req, res, next) => {
+    if (req.path === stripeWebhookPath && req.method === 'POST') {
+        bodyParser.raw({ type: 'application/json' })(req, res, next);
+    } else {
+        next();
+    }
+});
 
 // Set EJS as templating engine
 app.set('view engine', 'ejs');
@@ -305,7 +316,7 @@ app.get('/auctions/:id', (req, res) => {
 });
 
 // Routes for purchasing tickets and placing bids
-app.post('/raffles/:id/purchase', (req, res) => {
+app.post('/raffles/:id/purchase', async (req, res) => {
     const raffles = readRaffles();
     const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
     
@@ -326,24 +337,107 @@ app.post('/raffles/:id/purchase', (req, res) => {
         });
     }
 
-    // Add tickets to the raffle
-    const startIndex = raffle.soldTickets;
-    for (let i = 0; i < quantity; i++) {
-        const ticketNumber = generateTicketNumber(raffle.id, startIndex + i);
-        raffle.tickets.push({
-            id: Date.now().toString() + i,
-            ticketNumber, // Add unique ticket number
-            name: req.body.name,
-            email: req.body.email,
-            purchaseDate: new Date().toISOString()
+    const totalAmount = quantity * raffle.ticketPrice * 100; // Stripe needs amount in cents
+    
+    try {
+        // Create a Stripe checkout session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: `Ticket(s) for ${raffle.title}`,
+                            description: `${quantity} ticket(s) at $${raffle.ticketPrice} each`,
+                        },
+                        unit_amount: raffle.ticketPrice * 100, // Stripe needs amount in cents
+                    },
+                    quantity: quantity,
+                },
+            ],
+            metadata: {
+                raffleId: raffle.id,
+                quantity: quantity,
+                customerName: req.body.name,
+                customerEmail: req.body.email,
+            },
+            mode: 'payment',
+            success_url: `${req.protocol}://${req.get('host')}/raffles/${raffle.id}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.protocol}://${req.get('host')}/raffles/${raffle.id}`,
+        });
+
+        // Redirect to the Stripe Checkout page
+        res.redirect(session.url);
+    } catch (error) {
+        console.error('Stripe checkout error:', error);
+        res.status(500).render('error', {
+            title: 'Payment Error',
+            message: 'An error occurred while processing your payment. Please try again.'
         });
     }
+});
 
-    raffle.soldTickets += quantity;
-    writeRaffles(raffles);
+// Handle successful payments
+app.get('/raffles/:id/payment-success', async (req, res) => {
+    try {
+        const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
+        
+        // Verify payment was successful
+        if (session.payment_status === 'paid') {
+            const raffles = readRaffles();
+            const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+            
+            if (raffleIndex === -1) {
+                return res.status(404).render('error', {
+                    title: 'Raffle Not Found',
+                    message: 'The requested raffle could not be found.'
+                });
+            }
 
-    // In a real application, you would handle payment processing here
-    res.redirect(`/raffles/${raffle.id}?success=true`);
+            const raffle = raffles[raffleIndex];
+            const quantity = parseInt(session.metadata.quantity);
+            const customerName = session.metadata.customerName;
+            const customerEmail = session.metadata.customerEmail;
+            
+            // Add tickets to the raffle
+            const startIndex = raffle.soldTickets;
+            for (let i = 0; i < quantity; i++) {
+                const ticketNumber = generateTicketNumber(raffle.id, startIndex + i);
+                raffle.tickets.push({
+                    id: Date.now().toString() + i,
+                    ticketNumber,
+                    name: customerName,
+                    email: customerEmail,
+                    purchaseDate: new Date().toISOString(),
+                    paymentId: session.payment_intent
+                });
+            }
+            
+            raffle.soldTickets += quantity;
+            writeRaffles(raffles);
+            
+            // Render a success page
+            res.render('payment-success', { 
+                title: 'Payment Successful',
+                raffle,
+                quantity,
+                ticketPrice: raffle.ticketPrice,
+                totalAmount: quantity * raffle.ticketPrice
+            });
+        } else {
+            res.status(400).render('error', {
+                title: 'Payment Incomplete',
+                message: 'Your payment has not been completed. Please try again.'
+            });
+        }
+    } catch (error) {
+        console.error('Payment verification error:', error);
+        res.status(500).render('error', {
+            title: 'Payment Verification Error',
+            message: 'An error occurred while verifying your payment. Please contact support.'
+        });
+    }
 });
 
 // Add a route for auctions
@@ -577,6 +671,47 @@ app.get('/results', (req, res) => {
         completedAuctions,
         metrics
     });
+});
+
+// Stripe webhook handler
+app.post('/webhook', async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    // Verify webhook signature and extract the event
+    try {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            sig,
+            process.env.STRIPE_WEBHOOK_SECRET
+        );
+    } catch (err) {
+        console.error(`Webhook signature verification failed: ${err.message}`);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+        case 'payment_intent.succeeded':
+            const paymentIntent = event.data.object;
+            console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
+            // You can perform additional actions here if needed
+            break;
+        case 'checkout.session.completed':
+            const session = event.data.object;
+            // Access the session details
+            console.log(`Checkout session completed: ${session.id}`);
+            
+            // If you want, you can process the raffle ticket creation here instead of in the success route
+            // This would be more secure, but requires storing enough metadata in the session
+            
+            break;
+        default:
+            console.log(`Unhandled event type ${event.type}`);
+    }
+
+    // Return a 200 response to acknowledge receipt of the event
+    res.status(200).json({received: true});
 });
 
 // Error handling middleware
