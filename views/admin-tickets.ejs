@@ -1,0 +1,131 @@
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="mb-8">
+        <a href="/admin" class="text-raffle-primary hover:text-raffle-secondary flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            Back to Admin Dashboard
+        </a>
+    </div>
+
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800"><%= raffle.title %></h1>
+            <p class="text-lg text-gray-600 mt-2">Ticket Holders</p>
+        </div>
+        
+        <div class="text-right">
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-600">
+                    <span class="font-semibold"><%= raffle.soldTickets || 0 %></span> / <%= raffle.totalTickets %> tickets sold
+                </span>
+                
+                <% 
+                    const endDate = new Date(raffle.endDate);
+                    const now = new Date();
+                    const isEnded = endDate < now;
+                    const isDrawn = raffle.isDrawn;
+                    
+                    let status = 'Active';
+                    let statusColor = 'green';
+                    
+                    if (isDrawn) {
+                        status = 'Drawn';
+                        statusColor = 'blue';
+                    } else if (isEnded) {
+                        status = 'Ended';
+                        statusColor = 'yellow';
+                    }
+                %>
+                
+                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-<%= statusColor %>-100 text-<%= statusColor %>-800">
+                    <%= status %>
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket Number</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchaser</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <% if (raffle.tickets && raffle.tickets.length > 0) { %>
+                        <% raffle.tickets.forEach(ticket => { 
+                            // Check if this ticket is a winner
+                            let isWinner = false;
+                            let prizeName = '';
+                            
+                            if (raffle.prizes && raffle.isDrawn) {
+                                raffle.prizes.forEach(prize => {
+                                    if (prize.winningTicket === ticket.ticketNumber) {
+                                        isWinner = true;
+                                        prizeName = prize.name;
+                                    }
+                                });
+                            }
+                        %>
+                            <tr class="<%= isWinner ? 'bg-yellow-50' : '' %>">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium <%= isWinner ? 'text-amber-700' : 'text-gray-900' %>">
+                                    <%= ticket.ticketNumber %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <%= ticket.name %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <%= ticket.email %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <%= new Date(ticket.purchaseDate).toLocaleString() %>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <% if (isWinner) { %>
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            Winner - <%= prizeName %>
+                                        </span>
+                                    <% } else { %>
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            <%= isDrawn ? 'Not a winner' : 'Pending draw' %>
+                                        </span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No tickets sold yet
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <% if (!isDrawn && raffle.prizes && raffle.prizes.length > 0 && raffle.soldTickets > 0) { %>
+        <div class="mt-8 flex justify-end">
+            <% if (isEnded) { %>
+                <form method="POST" action="/raffles/<%= raffle.id %>/draw">
+                    <button type="submit" class="btn-primary">
+                        Draw Raffle Now
+                    </button>
+                </form>
+            <% } else { %>
+                <form method="POST" action="/admin/raffles/<%= raffle.id %>/end">
+                    <button type="submit" class="btn-secondary mr-4">
+                        End Raffle Now
+                    </button>
+                </form>
+            <% } %>
+        </div>
+    <% } %>
+</div> 

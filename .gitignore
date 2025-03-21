@@ -12,6 +12,7 @@ media/
 examples/
 package-lock.json
 public/images/
+temp/
 
 .env
 

@@ -48,23 +48,16 @@
                             <div class="flex justify-between items-start mb-6">
                                 <h3 class="text-xl font-bold text-gray-800 line-clamp-2 flex-1 mr-4"><%= raffle.title %></h3>
                                 <div class="text-right">
-                                    <% if (raffle.raffleType === 'tickets') { %>
-                                        <div class="font-semibold text-raffle-primary text-xl">$<%= raffle.ticketPrice %></div>
-                                        <div class="text-sm text-gray-500">per ticket</div>
-                                    <% } else { %>
-                                        <div class="font-semibold text-raffle-primary text-xl">$<%= raffle.currentBid %></div>
-                                        <div class="text-sm text-gray-500">current bid</div>
-                                    <% } %>
+                                    <div class="font-semibold text-raffle-primary text-xl">$<%= raffle.ticketPrice %></div>
+                                    <div class="text-sm text-gray-500">per ticket</div>
                                 </div>
                             </div>
 
                             <!-- Status Info -->
                             <div class="mt-auto">
-                                <% if (raffle.raffleType === 'tickets') { %>
-                                    <div class="text-base text-gray-600">
-                                        <%= raffle.totalTickets - raffle.soldTickets %> tickets remaining
-                                    </div>
-                                <% } %>
+                                <div class="text-base text-gray-600">
+                                    <%= raffle.totalTickets - raffle.soldTickets %> tickets remaining
+                                </div>
                                 <div class="text-base text-gray-500 mt-2">
                                     Ends <%= new Date(raffle.endDate).toLocaleDateString() %>
                                 </div>
@@ -73,7 +66,7 @@
                             <!-- Action Button -->
                             <div class="mt-6">
                                 <a href="/raffles/<%= raffle.id %>" class="btn-primary w-full text-center text-lg py-3">
-                                    <%= raffle.raffleType === 'tickets' ? 'Buy Tickets' : 'Place Bid' %>
+                                    Buy Tickets
                                 </a>
                             </div>
                         </div>

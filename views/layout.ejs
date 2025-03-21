@@ -117,30 +117,67 @@
 <body class="bg-gray-50 min-h-screen flex flex-col">
     <nav class="gradient-bg shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-20">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <a href="/" class="flex items-center space-x-2 hover-scale">
-                            <span class="text-4xl font-bold text-white drop-shadow-lg">West</span>
-                            <span class="text-4xl font-bold text-raffle-accent drop-shadow-lg">Raffle</span>
-                        </a>
-                    </div>
-                    <div class="hidden sm:ml-8 sm:flex sm:space-x-4">
+            <div class="flex justify-between items-center h-20">
+                <!-- Logo -->
+                <div class="flex-shrink-0">
+                    <a href="/" class="flex items-center space-x-2 hover-scale">
+                        <span class="text-4xl font-bold text-white drop-shadow-lg">West</span>
+                        <span class="text-4xl font-bold text-raffle-accent drop-shadow-lg">Raffle</span>
+                    </a>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden sm:flex sm:items-center">
+                    <div class="flex space-x-4">
                         <a href="/" class="nav-link">Home</a>
                         <a href="/raffles" class="nav-link">Raffles</a>
+                        <a href="/auctions" class="nav-link">Auctions</a>
+                        <a href="/results" class="nav-link">Results</a>
                         <a href="/charity" class="nav-link">Our Charity</a>
                         <% if (isAdmin) { %>
-                            <a href="/create-raffle" class="nav-link">Create Raffle</a>
+                            <a href="/admin" class="nav-link bg-raffle-accent/20 hover:bg-raffle-accent/30">Admin</a>
                         <% } %>
                     </div>
                 </div>
-                <div class="flex items-center">
+                
+                <!-- User info and mobile menu button -->
+                <div class="flex items-center gap-4">
                     <% if (username) { %>
-                        <span class="text-white mr-6 font-medium">Welcome, <%= username %></span>
+                        <span class="hidden sm:inline text-white font-medium">Welcome, <%= username %></span>
                         <button onclick="showChangeUsernameModal()" 
-                                class="text-white hover:text-raffle-accent transition-colors duration-200 font-medium">
+                                class="hidden sm:inline text-white hover:text-raffle-accent transition-colors duration-200 font-medium">
                             Change Username
                         </button>
+                    <% } %>
+                    
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-button" class="sm:hidden text-white hover:text-raffle-accent">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile menu (hidden by default) -->
+            <div id="mobile-menu" class="sm:hidden hidden">
+                <div class="flex flex-col px-2 pt-2 pb-4 space-y-1">
+                    <a href="/" class="block px-3 py-2 rounded-md text-white hover:bg-white/20">Home</a>
+                    <a href="/raffles" class="block px-3 py-2 rounded-md text-white hover:bg-white/20">Raffles</a>
+                    <a href="/auctions" class="block px-3 py-2 rounded-md text-white hover:bg-white/20">Auctions</a>
+                    <a href="/results" class="block px-3 py-2 rounded-md text-white hover:bg-white/20">Results</a>
+                    <a href="/charity" class="block px-3 py-2 rounded-md text-white hover:bg-white/20">Our Charity</a>
+                    <% if (isAdmin) { %>
+                        <a href="/admin" class="block px-3 py-2 rounded-md text-white bg-raffle-accent/20 hover:bg-raffle-accent/30">Admin</a>
+                    <% } %>
+                    <% if (username) { %>
+                        <div class="border-t border-white/20 mt-2 pt-2 text-white">
+                            <div class="px-3 py-1">Welcome, <%= username %></div>
+                            <button onclick="showChangeUsernameModal()" 
+                                    class="block w-full text-left px-3 py-2 rounded-md text-white hover:bg-white/20">
+                                Change Username
+                            </button>
+                        </div>
                     <% } %>
                 </div>
             </div>
@@ -216,6 +253,12 @@
         function hideChangeUsernameModal() {
             document.getElementById('changeUsernameModal').style.display = 'none';
         }
+
+        // Toggle mobile menu
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
 
         // Close modals when clicking outside
         window.onclick = function(event) {
