@@ -1,0 +1,107 @@
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="flex justify-between items-start mb-8">
+                <h1 class="text-4xl font-bold text-gray-800">Raffle Results</h1>
+            </div>
+
+            <div class="mb-8">
+                <a href="/raffles/<%= raffle.id %>" class="text-raffle-primary hover:text-raffle-secondary transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Raffle
+                </a>
+            </div>
+
+            <div class="prose max-w-none mb-12">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4"><%= raffle.title %></h2>
+                <p class="text-gray-600 text-lg"><%= raffle.description %></p>
+                <% if (raffle.imageUrl) { %>
+                    <div class="mt-6">
+                        <img src="<%= raffle.imageUrl %>" alt="<%= raffle.title %>" 
+                             class="w-full max-h-96 object-cover rounded-xl shadow-lg">
+                    </div>
+                <% } %>
+            </div>
+
+            <% if (raffle.isDrawn) { %>
+                <div class="mb-8 text-center">
+                    <div class="inline-block bg-green-100 text-green-800 px-6 py-3 rounded-full font-bold">
+                        <i class="fas fa-check-circle mr-2"></i> Raffle Drawn on <%= new Date(raffle.drawnAt).toLocaleString() %>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-raffle-primary to-raffle-secondary text-white p-6 rounded-xl mb-12">
+                    <h3 class="text-2xl font-bold mb-4 text-center">Congratulations to Our Winners!</h3>
+                    <p class="text-center">Winners have been notified by email. If you're a winner, please check your inbox.</p>
+                </div>
+
+                <% if (raffle.prizes && raffle.prizes.length > 0) { %>
+                    <div class="space-y-8">
+                        <h3 class="text-2xl font-bold text-center mb-6">Prizes and Winners</h3>
+                        
+                        <% raffle.prizes.forEach((prize, index) => { %>
+                            <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+                                <div class="grid grid-cols-1 md:grid-cols-3">
+                                    <% if (prize.imageUrl) { %>
+                                        <div class="h-64 md:h-full overflow-hidden">
+                                            <img src="<%= prize.imageUrl %>" alt="<%= prize.name %>" 
+                                                class="w-full h-full object-cover">
+                                        </div>
+                                    <% } else { %>
+                                        <div class="h-64 md:h-full bg-gradient-to-r from-raffle-primary to-raffle-secondary flex items-center justify-center">
+                                            <span class="text-white text-lg font-semibold px-4 text-center">No Image</span>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <div class="p-6 md:col-span-2">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <h4 class="text-xl font-bold text-gray-800"><%= prize.name %></h4>
+                                            <span class="bg-raffle-primary text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                $<%= prize.value %>
+                                            </span>
+                                        </div>
+                                        
+                                        <p class="text-gray-600 mb-6"><%= prize.description %></p>
+                                        
+                                        <div class="bg-green-50 p-4 rounded-lg">
+                                            <h5 class="font-bold text-green-800 mb-2">Winner</h5>
+                                            <% if (prize.winner) { %>
+                                                <div class="flex justify-between items-center">
+                                                    <div>
+                                                        <div class="font-semibold text-gray-800"><%= prize.winner.name %></div>
+                                                        <div class="text-sm text-gray-500">Ticket #<%= prize.winningTicket %></div>
+                                                    </div>
+                                                    <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                                        Winner
+                                                    </div>
+                                                </div>
+                                            <% } else { %>
+                                                <p class="text-gray-600">No winner selected for this prize yet.</p>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-12 card-gradient rounded-xl">
+                        <p class="text-gray-600 text-lg">No prizes were available for this raffle.</p>
+                    </div>
+                <% } %>
+            <% } else { %>
+                <div class="text-center py-12 card-gradient rounded-xl">
+                    <div class="text-raffle-primary mb-4">
+                        <svg class="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">Raffle Not Yet Drawn</h3>
+                    <p class="text-gray-600">This raffle has not been drawn yet. Please check back after the end date.</p>
+                    <div class="mt-4 text-lg font-semibold">
+                        Raffle ends on <%= new Date(raffle.endDate).toLocaleDateString() %>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div> 

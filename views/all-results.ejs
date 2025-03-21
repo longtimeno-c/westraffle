@@ -1,21 +1,21 @@
 <div class="max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-12">
-        <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-raffle-primary to-raffle-secondary">Active Raffles</h1>
+        <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-raffle-primary to-raffle-secondary">Raffle Results</h1>
     </div>
 
-    <div class="grid grid-cols-1 gap-12 px-4 max-w-5xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 px-4">
         <% if (raffles && raffles.length > 0) { %>
             <% raffles.forEach(raffle => { %>
-                <div class="card-gradient rounded-xl shadow-xl overflow-hidden hover-scale transition-all duration-300 h-full flex flex-col md:flex-row">
-                    <!-- Type Badge -->
-                    <div class="absolute top-4 left-4 z-10">
-                        <span class="bg-gradient-to-r from-raffle-accent to-raffle-primary text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                            Ticket Raffle
+                <div class="card-gradient rounded-xl shadow-xl overflow-hidden hover-scale transition-all duration-300 h-full flex flex-col">
+                    <!-- Drawn Badge -->
+                    <div class="absolute top-4 right-4 z-10">
+                        <span class="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                            Drawn
                         </span>
                     </div>
 
                     <!-- Image Section with Overlay -->
-                    <div class="relative h-64 md:h-auto md:w-2/5 overflow-hidden group">
+                    <div class="relative h-80 overflow-hidden group">
                         <% if (raffle.imageUrl) { %>
                             <img src="<%= raffle.imageUrl %>" alt="<%= raffle.title %>" 
                                  class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500">
@@ -32,49 +32,43 @@
                         <div class="flex justify-between items-start mb-6">
                             <h3 class="text-2xl font-bold text-gray-800 line-clamp-2 flex-1 mr-4"><%= raffle.title %></h3>
                             <div class="text-right">
-                                <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary bg-clip-text text-transparent text-2xl font-bold">
-                                    $<%= raffle.ticketPrice %>
+                                <div class="text-sm text-gray-500">
+                                    Drawn on <%= new Date(raffle.drawnAt).toLocaleDateString() %>
                                 </div>
-                                <div class="text-sm text-gray-500">per ticket</div>
                             </div>
                         </div>
 
-                        <!-- Item Details -->
+                        <!-- Prize Summary -->
                         <div class="mb-6">
-                            <p class="text-gray-600 line-clamp-2"><%= raffle.description %></p>
-                        </div>
-
-                        <!-- Status Info -->
-                        <div class="space-y-4 mb-6">
-                            <!-- Ticket Progress -->
-                            <div>
-                                <div class="flex justify-between text-sm text-gray-600 mb-2">
-                                    <span><%= raffle.soldTickets %> sold</span>
-                                    <span><%= raffle.totalTickets - raffle.soldTickets %> remaining</span>
+                            <p class="text-gray-600 mb-2">
+                                <% if (raffle.prizes && raffle.prizes.length > 0) { %>
+                                    <%= raffle.prizes.length %> prize<%= raffle.prizes.length > 1 ? 's' : '' %> awarded
+                                <% } else { %>
+                                    No prizes
+                                <% } %>
+                            </p>
+                            
+                            <% if (raffle.prizes && raffle.prizes.length > 0) { %>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    <% raffle.prizes.slice(0, 3).forEach(prize => { %>
+                                        <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                                            <%= prize.name %>
+                                        </span>
+                                    <% }); %>
+                                    <% if (raffle.prizes.length > 3) { %>
+                                        <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                                            +<%= raffle.prizes.length - 3 %> more
+                                        </span>
+                                    <% } %>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2">
-                                    <div class="bg-gradient-to-r from-raffle-accent to-raffle-primary h-2 rounded-full transition-all duration-500" 
-                                         style="width: <%= ((raffle.soldTickets || 0) / raffle.totalTickets) * 100 %>%">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Time Remaining -->
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-500">
-                                    <i class="fas fa-clock mr-2"></i>Ends
-                                </span>
-                                <span class="font-semibold text-gray-800">
-                                    <%= new Date(raffle.endDate).toLocaleDateString() %>
-                                </span>
-                            </div>
+                            <% } %>
                         </div>
 
                         <!-- Action Button -->
                         <div class="mt-auto">
-                            <a href="/raffles/<%= raffle.id %>" 
+                            <a href="/raffles/<%= raffle.id %>/results" 
                                class="btn-primary w-full text-center text-lg py-3 flex items-center justify-center space-x-2">
-                                <span>Buy Tickets</span>
+                                <span>View Results</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
                                 </svg>
@@ -91,8 +85,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                         </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No raffles available</h3>
-                    <p class="text-gray-600">Check back soon for new raffles!</p>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No raffle results available</h3>
+                    <p class="text-gray-600">There are no drawn raffles to display yet. Check back soon!</p>
                 </div>
             </div>
         <% } %>
