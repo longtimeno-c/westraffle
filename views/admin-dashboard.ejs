@@ -97,10 +97,10 @@
                                     <a href="/raffles/<%= raffle.id %>/prizes" class="text-green-600 hover:text-green-800 transition-colors">
                                         <i class="fas fa-gift mr-1"></i> Prizes
                                     </a>
-                                    <% if (!isDrawn && isEnded) { %>
+                                    <% if (!isDrawn) { %>
                                         <form action="/admin/raffles/<%= raffle.id %>/end" method="POST" class="inline">
                                             <button type="submit" class="text-yellow-600 hover:text-yellow-800 transition-colors">
-                                                <i class="fas fa-clock mr-1"></i> End Raffle
+                                                <i class="fas fa-clock mr-1"></i> <%= isEnded ? 'End Raffle' : 'Force End' %>
                                             </button>
                                         </form>
                                     <% } %>

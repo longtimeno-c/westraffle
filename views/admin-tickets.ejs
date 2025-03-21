@@ -43,10 +43,17 @@
                         <a href="/raffles/<%= raffle.id %>/prizes" class="btn-primary text-center py-2">
                             Manage Prizes
                         </a>
-                        <% if (!raffle.isDrawn && (raffle.manuallyEnded || new Date(raffle.endDate).getTime() <= new Date().getTime())) { %>
+                        <% if (!raffle.isDrawn) { %>
                             <form action="/admin/raffles/<%= raffle.id %>/end" method="POST">
                                 <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
-                                    End Raffle
+                                    <%= (raffle.manuallyEnded || new Date(raffle.endDate).getTime() <= new Date().getTime()) ? 'End Raffle' : 'Force End Raffle' %>
+                                </button>
+                            </form>
+                        <% } %>
+                        <% if (!raffle.isDrawn && raffle.prizes && raffle.prizes.length > 0 && raffle.soldTickets > 0) { %>
+                            <form action="/raffles/<%= raffle.id %>/draw" method="POST">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
+                                    Draw Raffle
                                 </button>
                             </form>
                         <% } %>
