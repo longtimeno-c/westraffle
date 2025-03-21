@@ -30,7 +30,7 @@
                                 <p class="font-bold">
                                     <% if (raffle.isDrawn) { %>
                                         <span class="text-green-600">Drawn</span>
-                                    <% } else if (new Date(raffle.endDate) < new Date()) { %>
+                                    <% } else if (raffle.manuallyEnded || new Date(raffle.endDate).getTime() <= new Date().getTime()) { %>
                                         <span class="text-red-600">Ended</span>
                                     <% } else { %>
                                         <span class="text-blue-600">Active</span>

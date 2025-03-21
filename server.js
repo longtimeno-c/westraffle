@@ -894,6 +894,8 @@ app.post('/admin/raffles/:id/end', (req, res) => {
     
     // Set end date to now to force the raffle to end
     raffle.endDate = new Date().toISOString();
+    // Log that raffle was manually ended
+    raffle.manuallyEnded = true;
     writeRaffles(raffles);
     
     res.redirect('/admin');

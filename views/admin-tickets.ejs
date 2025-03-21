@@ -30,7 +30,7 @@
                                 <p class="font-bold">
                                     <% if (raffle.isDrawn) { %>
                                         <span class="text-green-600">Drawn</span>
-                                    <% } else if (new Date(raffle.endDate) < new Date()) { %>
+                                    <% } else if (raffle.manuallyEnded || new Date(raffle.endDate).getTime() <= new Date().getTime()) { %>
                                         <span class="text-red-600">Ended</span>
                                     <% } else { %>
                                         <span class="text-blue-600">Active</span>
@@ -43,7 +43,7 @@
                         <a href="/raffles/<%= raffle.id %>/prizes" class="btn-primary text-center py-2">
                             Manage Prizes
                         </a>
-                        <% if (!raffle.isDrawn && (new Date(raffle.endDate) < new Date())) { %>
+                        <% if (!raffle.isDrawn && (raffle.manuallyEnded || new Date(raffle.endDate).getTime() <= new Date().getTime())) { %>
                             <form action="/admin/raffles/<%= raffle.id %>/end" method="POST">
                                 <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
                                     End Raffle

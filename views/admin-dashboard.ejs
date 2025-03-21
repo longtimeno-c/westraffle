@@ -48,7 +48,7 @@
                         <% raffles.forEach(raffle => { 
                             const endDate = new Date(raffle.endDate);
                             const now = new Date();
-                            const isEnded = endDate < now;
+                            const isEnded = raffle.manuallyEnded || endDate.getTime() <= now.getTime();
                             const isDrawn = raffle.isDrawn;
                             let status = 'Active';
                             let statusColor = 'green';
@@ -97,7 +97,7 @@
                                     <a href="/raffles/<%= raffle.id %>/prizes" class="text-green-600 hover:text-green-800 transition-colors">
                                         <i class="fas fa-gift mr-1"></i> Prizes
                                     </a>
-                                    <% if (!isDrawn && (endDate < now)) { %>
+                                    <% if (!isDrawn && isEnded) { %>
                                         <form action="/admin/raffles/<%= raffle.id %>/end" method="POST" class="inline">
                                             <button type="submit" class="text-yellow-600 hover:text-yellow-800 transition-colors">
                                                 <i class="fas fa-clock mr-1"></i> End Raffle
