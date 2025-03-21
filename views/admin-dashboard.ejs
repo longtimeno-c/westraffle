@@ -91,19 +91,25 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                     <a href="/raffles/<%= raffle.id %>" class="text-indigo-600 hover:text-indigo-900">View</a>
-                                    <a href="/admin/raffles/<%= raffle.id %>/tickets" class="text-gray-600 hover:text-gray-900">Tickets</a>
-                                    <a href="/raffles/<%= raffle.id %>/prizes" class="text-purple-600 hover:text-purple-900">Prizes</a>
-                                    
-                                    <% if (!isDrawn) { %>
-                                        <% if (isEnded) { %>
-                                            <form method="POST" action="/raffles/<%= raffle.id %>/draw" class="inline">
-                                                <button type="submit" class="text-blue-600 hover:text-blue-900">Draw Raffle</button>
-                                            </form>
-                                        <% } else { %>
-                                            <form method="POST" action="/admin/raffles/<%= raffle.id %>/end" class="inline">
-                                                <button type="submit" class="text-red-600 hover:text-red-900">End Now</button>
-                                            </form>
-                                        <% } %>
+                                    <a href="/admin/raffles/<%= raffle.id %>/tickets" class="text-blue-600 hover:text-blue-800 transition-colors">
+                                        <i class="fas fa-ticket-alt mr-1"></i> Tickets
+                                    </a>
+                                    <a href="/raffles/<%= raffle.id %>/prizes" class="text-green-600 hover:text-green-800 transition-colors">
+                                        <i class="fas fa-gift mr-1"></i> Prizes
+                                    </a>
+                                    <% if (!isDrawn && (endDate < now)) { %>
+                                        <form action="/admin/raffles/<%= raffle.id %>/end" method="POST" class="inline">
+                                            <button type="submit" class="text-yellow-600 hover:text-yellow-800 transition-colors">
+                                                <i class="fas fa-clock mr-1"></i> End Raffle
+                                            </button>
+                                        </form>
+                                    <% } %>
+                                    <% if (!isDrawn && raffle.prizes && raffle.prizes.length > 0 && raffle.soldTickets > 0) { %>
+                                        <form action="/raffles/<%= raffle.id %>/draw" method="POST" class="inline">
+                                            <button type="submit" class="text-green-600 hover:text-green-800 transition-colors">
+                                                <i class="fas fa-random mr-1"></i> Draw
+                                            </button>
+                                        </form>
                                     <% } %>
                                 </td>
                             </tr>

@@ -1,131 +1,121 @@
-<div class="max-w-7xl mx-auto px-4 py-8">
-    <div class="mb-8">
-        <a href="/admin" class="text-raffle-primary hover:text-raffle-secondary flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-            </svg>
-            Back to Admin Dashboard
-        </a>
-    </div>
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="flex justify-between items-start mb-8">
+                <h1 class="text-4xl font-bold text-gray-800">Raffle Tickets</h1>
+                <a href="/admin" class="text-raffle-primary hover:text-raffle-secondary transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Admin
+                </a>
+            </div>
 
-    <div class="flex justify-between items-start mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-800"><%= raffle.title %></h1>
-            <p class="text-lg text-gray-600 mt-2">Ticket Holders</p>
-        </div>
-        
-        <div class="text-right">
-            <div class="flex items-center space-x-4">
-                <span class="text-gray-600">
-                    <span class="font-semibold"><%= raffle.soldTickets || 0 %></span> / <%= raffle.totalTickets %> tickets sold
-                </span>
-                
-                <% 
-                    const endDate = new Date(raffle.endDate);
-                    const now = new Date();
-                    const isEnded = endDate < now;
-                    const isDrawn = raffle.isDrawn;
-                    
-                    let status = 'Active';
-                    let statusColor = 'green';
-                    
-                    if (isDrawn) {
-                        status = 'Drawn';
-                        statusColor = 'blue';
-                    } else if (isEnded) {
-                        status = 'Ended';
-                        statusColor = 'yellow';
-                    }
-                %>
-                
-                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-<%= statusColor %>-100 text-<%= statusColor %>-800">
-                    <%= status %>
-                </span>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4"><%= raffle.title %></h2>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div class="bg-gray-50 rounded-lg p-3 text-gray-600 flex-grow">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm">Total Tickets</p>
+                                <p class="font-bold"><%= raffle.totalTickets %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">Sold Tickets</p>
+                                <p class="font-bold"><%= raffle.soldTickets %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">End Date</p>
+                                <p class="font-bold"><%= new Date(raffle.endDate).toLocaleDateString() %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">Status</p>
+                                <p class="font-bold">
+                                    <% if (raffle.isDrawn) { %>
+                                        <span class="text-green-600">Drawn</span>
+                                    <% } else if (new Date(raffle.endDate) < new Date()) { %>
+                                        <span class="text-red-600">Ended</span>
+                                    <% } else { %>
+                                        <span class="text-blue-600">Active</span>
+                                    <% } %>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <a href="/raffles/<%= raffle.id %>/prizes" class="btn-primary text-center py-2">
+                            Manage Prizes
+                        </a>
+                        <% if (!raffle.isDrawn && (new Date(raffle.endDate) < new Date())) { %>
+                            <form action="/admin/raffles/<%= raffle.id %>/end" method="POST">
+                                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
+                                    End Raffle
+                                </button>
+                            </form>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tickets list -->
+            <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Purchased Tickets</h3>
+                <% if (raffle.tickets && raffle.tickets.length > 0) { %>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 card-gradient">
+                            <thead class="bg-gray-50/50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket #</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchaser</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white/50 divide-y divide-gray-200">
+                                <% raffle.tickets.forEach(ticket => { %>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><%= ticket.ticketNumber %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600"><%= ticket.name %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600"><%= ticket.email %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600"><%= new Date(ticket.purchaseDate).toLocaleString() %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <% 
+                                                // Check if this ticket is a winner
+                                                let isWinner = false;
+                                                let prizeName = '';
+                                                if (raffle.prizes) {
+                                                    for (const prize of raffle.prizes) {
+                                                        if (prize.winningTicket === ticket.ticketNumber) {
+                                                            isWinner = true;
+                                                            prizeName = prize.name;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            %>
+                                            <% if (isWinner) { %>
+                                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs">
+                                                    Winner: <%= prizeName %>
+                                                </span>
+                                            <% } else if (raffle.isDrawn) { %>
+                                                <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs">
+                                                    Not a winner
+                                                </span>
+                                            <% } else { %>
+                                                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs">
+                                                    Active
+                                                </span>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-12 card-gradient rounded-xl">
+                        <p class="text-gray-600 text-lg">No tickets have been sold for this raffle yet.</p>
+                    </div>
+                <% } %>
             </div>
         </div>
     </div>
-    
-    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket Number</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchaser</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Date</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <% if (raffle.tickets && raffle.tickets.length > 0) { %>
-                        <% raffle.tickets.forEach(ticket => { 
-                            // Check if this ticket is a winner
-                            let isWinner = false;
-                            let prizeName = '';
-                            
-                            if (raffle.prizes && raffle.isDrawn) {
-                                raffle.prizes.forEach(prize => {
-                                    if (prize.winningTicket === ticket.ticketNumber) {
-                                        isWinner = true;
-                                        prizeName = prize.name;
-                                    }
-                                });
-                            }
-                        %>
-                            <tr class="<%= isWinner ? 'bg-yellow-50' : '' %>">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium <%= isWinner ? 'text-amber-700' : 'text-gray-900' %>">
-                                    <%= ticket.ticketNumber %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <%= ticket.name %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <%= ticket.email %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <%= new Date(ticket.purchaseDate).toLocaleString() %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <% if (isWinner) { %>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            Winner - <%= prizeName %>
-                                        </span>
-                                    <% } else { %>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                            <%= isDrawn ? 'Not a winner' : 'Pending draw' %>
-                                        </span>
-                                    <% } %>
-                                </td>
-                            </tr>
-                        <% }); %>
-                    <% } else { %>
-                        <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                No tickets sold yet
-                            </td>
-                        </tr>
-                    <% } %>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <% if (!isDrawn && raffle.prizes && raffle.prizes.length > 0 && raffle.soldTickets > 0) { %>
-        <div class="mt-8 flex justify-end">
-            <% if (isEnded) { %>
-                <form method="POST" action="/raffles/<%= raffle.id %>/draw">
-                    <button type="submit" class="btn-primary">
-                        Draw Raffle Now
-                    </button>
-                </form>
-            <% } else { %>
-                <form method="POST" action="/admin/raffles/<%= raffle.id %>/end">
-                    <button type="submit" class="btn-secondary mr-4">
-                        End Raffle Now
-                    </button>
-                </form>
-            <% } %>
-        </div>
-    <% } %>
 </div> 

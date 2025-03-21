@@ -1,0 +1,151 @@
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="flex justify-between items-start mb-8">
+                <h1 class="text-4xl font-bold text-gray-800">Manage Prizes</h1>
+                <a href="/admin" class="text-raffle-primary hover:text-raffle-secondary transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Admin
+                </a>
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4"><%= raffle.title %></h2>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div class="bg-gray-50 rounded-lg p-3 text-gray-600 flex-grow">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm">Total Tickets</p>
+                                <p class="font-bold"><%= raffle.totalTickets %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">Sold Tickets</p>
+                                <p class="font-bold"><%= raffle.soldTickets %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">End Date</p>
+                                <p class="font-bold"><%= new Date(raffle.endDate).toLocaleDateString() %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">Status</p>
+                                <p class="font-bold">
+                                    <% if (raffle.isDrawn) { %>
+                                        <span class="text-green-600">Drawn</span>
+                                    <% } else if (new Date(raffle.endDate) < new Date()) { %>
+                                        <span class="text-red-600">Ended</span>
+                                    <% } else { %>
+                                        <span class="text-blue-600">Active</span>
+                                    <% } %>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <a href="/admin/raffles/<%= raffle.id %>/tickets" class="btn-primary text-center py-2">
+                            View Tickets
+                        </a>
+                        <% if (!raffle.isDrawn && raffle.prizes && raffle.prizes.length > 0 && raffle.soldTickets > 0) { %>
+                            <form action="/raffles/<%= raffle.id %>/draw" method="POST">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
+                                    Draw Raffle
+                                </button>
+                            </form>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current prizes -->
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Current Prizes</h3>
+                <% if (raffle.prizes && raffle.prizes.length > 0) { %>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <% raffle.prizes.forEach(prize => { %>
+                            <div class="card-gradient p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
+                                <div class="flex items-start">
+                                    <% if (prize.imageUrl) { %>
+                                        <div class="mr-6 flex-shrink-0">
+                                            <img src="<%= prize.imageUrl %>" alt="<%= prize.name %>" class="w-24 h-24 object-cover rounded-lg">
+                                        </div>
+                                    <% } %>
+                                    <div class="flex-grow">
+                                        <div class="flex justify-between items-start gap-3">
+                                            <h4 class="text-lg font-bold text-gray-800"><%= prize.name %></h4>
+                                            <span class="bg-raffle-primary text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                $<%= prize.value %>
+                                            </span>
+                                        </div>
+                                        <p class="text-gray-600 mt-2 text-sm"><%= prize.description %></p>
+                                        
+                                        <% if (prize.winningTicket) { %>
+                                            <div class="mt-4 p-3 bg-green-50 rounded-lg">
+                                                <div class="font-semibold text-green-800">Winner: <%= prize.winner.name %></div>
+                                                <div class="text-sm text-green-600">Ticket #<%= prize.winningTicket %></div>
+                                            </div>
+                                        <% } %>
+                                        
+                                        <% if (!raffle.isDrawn) { %>
+                                            <div class="mt-4">
+                                                <form action="/raffles/<%= raffle.id %>/prizes/remove/<%= prize.id %>" method="POST">
+                                                    <button type="submit" class="text-red-600 hover:text-red-800 text-sm transition-colors">
+                                                        <i class="fas fa-trash-alt mr-1"></i> Remove Prize
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-12 card-gradient rounded-xl">
+                        <p class="text-gray-600 text-lg">No prizes have been added to this raffle yet.</p>
+                    </div>
+                <% } %>
+            </div>
+
+            <!-- Add new prize form (only if raffle not yet drawn) -->
+            <% if (!raffle.isDrawn) { %>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Add New Prize</h3>
+                    <form action="/raffles/<%= raffle.id %>/prizes" method="POST" enctype="multipart/form-data" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="prizeName" class="block text-sm font-medium text-gray-700 mb-2">Prize Name</label>
+                                <input type="text" name="prizeName" id="prizeName" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-raffle-primary focus:border-transparent transition-all duration-200"
+                                    placeholder="Enter the prize name">
+                            </div>
+                            <div>
+                                <label for="prizeValue" class="block text-sm font-medium text-gray-700 mb-2">Value ($)</label>
+                                <input type="number" name="prizeValue" id="prizeValue" min="0" step="0.01" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-raffle-primary focus:border-transparent transition-all duration-200"
+                                    placeholder="Enter the prize value">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="prizeDescription" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <textarea name="prizeDescription" id="prizeDescription" rows="3" required
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-raffle-primary focus:border-transparent transition-all duration-200"
+                                placeholder="Describe the prize"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label for="prizeImage" class="block text-sm font-medium text-gray-700 mb-2">Prize Image</label>
+                            <input type="file" name="prizeImage" id="prizeImage" accept="image/*"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-raffle-primary focus:border-transparent transition-all duration-200">
+                            <p class="mt-1 text-sm text-gray-500">Upload an image (JPEG, PNG, GIF, max 5MB)</p>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn-primary">
+                                Add Prize
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div> 

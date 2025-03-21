@@ -673,6 +673,253 @@ app.get('/results', (req, res) => {
     });
 });
 
+// Add a route for viewing raffle results
+app.get('/raffles/:id/results', (req, res) => {
+    const raffles = readRaffles();
+    const raffle = raffles.find(r => r.id === req.params.id);
+    
+    if (!raffle) {
+        return res.status(404).render('error', { 
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    res.render('raffle-results', { 
+        title: `Results - ${raffle.title}`,
+        raffle 
+    });
+});
+
+// Add a route for managing prizes
+app.get('/raffles/:id/prizes', (req, res) => {
+    // Only admins can access this page
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to manage prizes.'
+        });
+    }
+
+    const raffles = readRaffles();
+    const raffle = raffles.find(r => r.id === req.params.id);
+    
+    if (!raffle) {
+        return res.status(404).render('error', { 
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    res.render('admin-prizes', { 
+        title: `Prizes - ${raffle.title}`,
+        raffle
+    });
+});
+
+// Add a route for adding prizes
+app.post('/raffles/:id/prizes', upload.single('prizeImage'), (req, res) => {
+    // Only admins can add prizes
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to add prizes.'
+        });
+    }
+    
+    const raffles = readRaffles();
+    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+    
+    if (raffleIndex === -1) {
+        return res.status(404).render('error', {
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    const raffle = raffles[raffleIndex];
+    
+    // Create a new prize
+    const prize = {
+        id: Date.now().toString(),
+        name: req.body.prizeName,
+        description: req.body.prizeDescription,
+        value: parseFloat(req.body.prizeValue),
+        imageUrl: req.file ? `/images/raffles/${req.file.filename}` : null,
+        addedAt: new Date().toISOString(),
+        winningTicket: null, // Will be filled when the raffle is drawn
+        winner: null // Will be filled when the raffle is drawn
+    };
+    
+    // Add the prize to the raffle
+    if (!raffle.prizes) {
+        raffle.prizes = [];
+    }
+    raffle.prizes.push(prize);
+    writeRaffles(raffles);
+    
+    res.redirect(`/raffles/${raffle.id}/prizes`);
+});
+
+// Route to view raffle tickets
+app.get('/admin/raffles/:id/tickets', (req, res) => {
+    // Only admins can view tickets
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to view tickets.'
+        });
+    }
+    
+    const raffles = readRaffles();
+    const raffle = raffles.find(r => r.id === req.params.id);
+    
+    if (!raffle) {
+        return res.status(404).render('error', { 
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    res.render('admin-tickets', { 
+        title: `Tickets - ${raffle.title}`,
+        raffle
+    });
+});
+
+// Route to draw the raffle
+app.post('/raffles/:id/draw', (req, res) => {
+    // Only admins can draw the raffle
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to draw the raffle.'
+        });
+    }
+    
+    const raffles = readRaffles();
+    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+    
+    if (raffleIndex === -1) {
+        return res.status(404).render('error', {
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    const raffle = raffles[raffleIndex];
+    
+    // Check if the raffle has tickets and prizes
+    if (!raffle.tickets || raffle.tickets.length === 0) {
+        return res.status(400).render('error', {
+            title: 'Cannot Draw Raffle',
+            message: 'This raffle has no tickets sold.'
+        });
+    }
+    
+    if (!raffle.prizes || raffle.prizes.length === 0) {
+        return res.status(400).render('error', {
+            title: 'Cannot Draw Raffle',
+            message: 'This raffle has no prizes to award.'
+        });
+    }
+    
+    // Draw the raffle
+    const tickets = [...raffle.tickets];
+    
+    // For each prize, randomly select a winning ticket
+    for (const prize of raffle.prizes) {
+        if (tickets.length === 0) break; // Stop if we run out of tickets
+        
+        // Only draw if this prize hasn't been drawn yet
+        if (!prize.winningTicket) {
+            // Get a random ticket
+            const randomIndex = Math.floor(Math.random() * tickets.length);
+            const winningTicket = tickets[randomIndex];
+            
+            // Remove this ticket from the available tickets pool
+            tickets.splice(randomIndex, 1);
+            
+            // Assign the winner
+            prize.winningTicket = winningTicket.ticketNumber;
+            prize.winner = {
+                name: winningTicket.name,
+                email: winningTicket.email
+            };
+        }
+    }
+    
+    // Save the updated raffle
+    raffle.isDrawn = true;
+    raffle.drawnAt = new Date().toISOString();
+    writeRaffles(raffles);
+    
+    res.redirect(`/raffles/${raffle.id}/results`);
+});
+
+// Route to end a raffle immediately
+app.post('/admin/raffles/:id/end', (req, res) => {
+    // Only admins can end raffles
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to end raffles.'
+        });
+    }
+    
+    const raffles = readRaffles();
+    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+    
+    if (raffleIndex === -1) {
+        return res.status(404).render('error', {
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    const raffle = raffles[raffleIndex];
+    
+    // Set end date to now to force the raffle to end
+    raffle.endDate = new Date().toISOString();
+    writeRaffles(raffles);
+    
+    res.redirect('/admin');
+});
+
+// Route to remove a prize from a raffle
+app.post('/raffles/:id/prizes/remove/:prizeId', (req, res) => {
+    // Only admins can remove prizes
+    if (req.cookies.username !== process.env.ADMIN_USERNAME) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You do not have permission to remove prizes.'
+        });
+    }
+    
+    const raffles = readRaffles();
+    const raffleIndex = raffles.findIndex(r => r.id === req.params.id);
+    
+    if (raffleIndex === -1) {
+        return res.status(404).render('error', {
+            title: 'Raffle Not Found',
+            message: 'The requested raffle could not be found.'
+        });
+    }
+    
+    const raffle = raffles[raffleIndex];
+    
+    // Find the prize and remove it
+    if (raffle.prizes) {
+        const prizeIndex = raffle.prizes.findIndex(p => p.id === req.params.prizeId);
+        if (prizeIndex !== -1) {
+            raffle.prizes.splice(prizeIndex, 1);
+            writeRaffles(raffles);
+        }
+    }
+    
+    res.redirect(`/raffles/${raffle.id}/prizes`);
+});
+
 // Stripe webhook handler
 app.post('/webhook', async (req, res) => {
     const sig = req.headers['stripe-signature'];
