@@ -1,0 +1,131 @@
+<div class="max-w-4xl mx-auto">
+    <div class="card-gradient rounded-xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="flex justify-between items-start mb-8">
+                <h1 class="text-4xl font-bold text-gray-800">Auction Bids</h1>
+                <a href="/admin" class="text-raffle-primary hover:text-raffle-secondary transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Admin
+                </a>
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4"><%= auction.title %></h2>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div class="bg-gray-50 rounded-lg p-3 text-gray-600 flex-grow">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm">Starting Bid</p>
+                                <p class="font-bold">$<%= auction.startingBid %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">Current Bid</p>
+                                <p class="font-bold">$<%= auction.currentBid %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">End Date</p>
+                                <p class="font-bold"><%= new Date(auction.endDate).toLocaleDateString() %></p>
+                            </div>
+                            <div>
+                                <p class="text-sm">Status</p>
+                                <p class="font-bold">
+                                    <% if (auction.isCompleted) { %>
+                                        <span class="text-green-600">Completed</span>
+                                    <% } else if (new Date(auction.endDate).getTime() <= new Date().getTime()) { %>
+                                        <span class="text-red-600">Ended</span>
+                                    <% } else { %>
+                                        <span class="text-blue-600">Active</span>
+                                    <% } %>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <a href="/auctions/<%= auction.id %>" class="btn-primary text-center py-2">
+                            View Auction
+                        </a>
+                        <% 
+                            const now = new Date();
+                            const endDate = new Date(auction.endDate);
+                            const isEnded = endDate <= now;
+                        %>
+                        
+                        <% if (!auction.isCompleted) { %>
+                            <% if (!isEnded) { %>
+                                <form action="/admin/auctions/<%= auction.id %>/end" method="POST">
+                                    <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
+                                        Force End Auction
+                                    </button>
+                                </form>
+                            <% } %>
+                            <% if (isEnded && auction.bids && auction.bids.length > 0) { %>
+                                <form action="/auctions/<%= auction.id %>/complete" method="POST">
+                                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg w-full transition-colors">
+                                        Complete Auction
+                                    </button>
+                                </form>
+                            <% } %>
+                        <% } else { %>
+                            <a href="/auctions/<%= auction.id %>/results" class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg text-center transition-colors">
+                                View Results
+                            </a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bids list -->
+            <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Bid History</h3>
+                <% if (auction.bids && auction.bids.length > 0) { %>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 card-gradient">
+                            <thead class="bg-gray-50/50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bidder</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white/50 divide-y divide-gray-200">
+                                <% auction.bids.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(bid => { %>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><%= bid.name %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600"><%= bid.email %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">$<%= bid.amount %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600"><%= new Date(bid.timestamp).toLocaleString() %></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <% 
+                                                // Check if this is the highest/winning bid
+                                                let isHighestBid = bid.amount === auction.currentBid;
+                                                let isWinner = auction.isCompleted && auction.winner && auction.winner.bid === bid.amount && auction.winner.email === bid.email;
+                                            %>
+                                            <% if (isWinner) { %>
+                                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs">
+                                                    Winner
+                                                </span>
+                                            <% } else if (isHighestBid) { %>
+                                                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs">
+                                                    Highest Bid
+                                                </span>
+                                            <% } else { %>
+                                                <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs">
+                                                    Outbid
+                                                </span>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-12 card-gradient rounded-xl">
+                        <p class="text-gray-600 text-lg">No bids have been placed for this auction yet.</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div> 

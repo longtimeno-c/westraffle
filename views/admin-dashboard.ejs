@@ -127,7 +127,7 @@
     </div>
     
     <!-- Auctions Table -->
-    <div id="auctions-content" class="bg-white rounded-xl shadow-md overflow-hidden mb-8 auction-tab hidden">
+    <div id="auctions-content" class="bg-white rounded-xl shadow-md overflow-hidden mb-8 auction-tab">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -187,16 +187,22 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                     <a href="/auctions/<%= auction.id %>" class="text-indigo-600 hover:text-indigo-900">View</a>
-                                    <a href="/admin/auctions/<%= auction.id %>/bids" class="text-gray-600 hover:text-gray-900">Bids</a>
+                                    <a href="/admin/auctions/<%= auction.id %>/bids" class="text-blue-600 hover:text-blue-800 transition-colors">
+                                        <i class="fas fa-gavel mr-1"></i> Bids
+                                    </a>
                                     
                                     <% if (!isCompleted) { %>
                                         <% if (isEnded && auction.bids && auction.bids.length > 0) { %>
                                             <form method="POST" action="/auctions/<%= auction.id %>/complete" class="inline">
-                                                <button type="submit" class="text-blue-600 hover:text-blue-900">Complete Auction</button>
+                                                <button type="submit" class="text-green-600 hover:text-green-800 transition-colors">
+                                                    <i class="fas fa-check-circle mr-1"></i> Complete
+                                                </button>
                                             </form>
                                         <% } else if (!isEnded) { %>
                                             <form method="POST" action="/admin/auctions/<%= auction.id %>/end" class="inline">
-                                                <button type="submit" class="text-red-600 hover:text-red-900">End Now</button>
+                                                <button type="submit" class="text-yellow-600 hover:text-yellow-800 transition-colors">
+                                                    <i class="fas fa-clock mr-1"></i> Force End
+                                                </button>
                                             </form>
                                         <% } %>
                                     <% } %>
@@ -234,9 +240,6 @@ function showTab(tabName) {
     
     // Show all, or filter to show only raffles or auctions
     if (tabName === 'all') {
-        document.querySelectorAll('.item-row').forEach(row => {
-            row.classList.remove('hidden');
-        });
         raffleContent.classList.remove('hidden');
         auctionContent.classList.remove('hidden');
     } else if (tabName === 'raffles') {
