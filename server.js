@@ -49,6 +49,19 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir);
 }
 
+// Helper function to normalize dates for comparison
+const isDatePassed = (dateStr) => {
+    // Create date objects and reset time parts to compare just the dates
+    const date = new Date(dateStr);
+    const now = new Date();
+    
+    // Set both to UTC midnight for fair comparison
+    date.setUTCHours(0, 0, 0, 0);
+    now.setUTCHours(0, 0, 0, 0);
+    
+    return date <= now;
+};
+
 // Helper function to read raffles
 const readRaffles = () => {
     const rafflesPath = path.join(dataDir, 'raffles.json');
