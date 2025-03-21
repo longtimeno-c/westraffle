@@ -6,8 +6,8 @@ const fs = require('fs');
 const expressLayouts = require('express-ejs-layouts');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 3000;
